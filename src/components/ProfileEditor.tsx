@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase/client';
 import { User, Phone, MapPin, AlignLeft, Camera, Check, Loader2, Save } from 'lucide-react';
+import { compressImage } from '@/lib/imageUtils';
 
 const ProfileEditor = () => {
     const [loading, setLoading] = useState(true);
@@ -62,12 +63,21 @@ const ProfileEditor = () => {
             let avatarUrl = profile.avatar_url;
 
             if (avatarFile) {
-                const fileExt = avatarFile.name.split('.').pop();
+                let uploadData: File | Blob = avatarFile;
+                let fileExt = avatarFile.name.split('.').pop();
+
+                try {
+                    uploadData = await compressImage(avatarFile);
+                    fileExt = 'webp';
+                } catch (err) {
+                    console.error('Compression failed, uploading original:', err);
+                }
+
                 const filePath = `${user.id}.${fileExt}`;
 
                 const { error: uploadError } = await supabase.storage
                     .from('profiles')
-                    .upload(filePath, avatarFile, { upsert: true });
+                    .upload(filePath, uploadData, { upsert: true });
 
                 if (uploadError) throw uploadError;
 

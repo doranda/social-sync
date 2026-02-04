@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase/client';
 import { Calendar, MapPin, Users as UsersIcon, Camera, Plus, Check, Loader2 } from 'lucide-react';
+import { compressImage } from '@/lib/imageUtils';
 
 const MeetingLogger = ({ groupId }: { groupId: string }) => {
     const [title, setTitle] = useState('');
@@ -67,13 +68,25 @@ const MeetingLogger = ({ groupId }: { groupId: string }) => {
 
             // 0. Upload Media if exists
             if (mediaFile) {
-                const fileExt = mediaFile.name.split('.').pop();
+                const isImage = mediaFile.type.startsWith('image/');
+                let uploadData: File | Blob = mediaFile;
+                let fileExt = mediaFile.name.split('.').pop();
+
+                if (isImage) {
+                    try {
+                        uploadData = await compressImage(mediaFile);
+                        fileExt = 'webp'; // Converted to WebP
+                    } catch (err) {
+                        console.error('Compression failed, uploading original:', err);
+                    }
+                }
+
                 const fileName = `${Math.random()}.${fileExt}`;
                 const filePath = `${currentUser.id}/${fileName}`;
 
-                const { error: uploadError, data } = await supabase.storage
+                const { error: uploadError } = await supabase.storage
                     .from('meeting_media')
-                    .upload(filePath, mediaFile);
+                    .upload(filePath, uploadData);
 
                 if (uploadError) throw uploadError;
 
