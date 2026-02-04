@@ -172,31 +172,31 @@ const GroupManager = ({ onGroupSync }: { onGroupSync: () => void }) => {
 
     if (!currentGroup) {
         return (
-            <div className="bg-slate-900 border border-slate-800 p-10 rounded-[2.5rem] shadow-2xl relative overflow-hidden">
+            <div className="bg-slate-900 border border-slate-800 p-6 md:p-10 rounded-[2rem] md:rounded-[2.5rem] shadow-2xl relative overflow-hidden">
                 <div className="absolute top-[-20%] right-[-10%] w-64 h-64 bg-blue-600/10 rounded-full blur-[80px]" />
 
                 <div className="text-center relative z-10">
                     <div className="w-16 h-16 bg-slate-800 rounded-3xl flex items-center justify-center mx-auto mb-6 text-blue-500 shadow-xl border border-slate-700">
                         <UsersIcon size={32} />
                     </div>
-                    <h3 className="text-2xl font-black text-white mb-2 tracking-tight">You haven't joined a group yet.</h3>
-                    <p className="text-slate-500 mb-8 font-medium">Friendships are better together. Create a new circle or join an existing one.</p>
+                    <h3 className="text-xl md:text-2xl font-black text-white mb-2 tracking-tight">Circle Selection Required</h3>
+                    <p className="text-slate-500 text-sm md:text-base mb-8 font-medium">Friendships are better together. Create a new circle or join an existing one.</p>
 
                     {action === 'none' && (
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <button
                                 onClick={() => setAction('create')}
-                                className="flex flex-col items-center justify-center p-8 bg-slate-950 border border-slate-800 rounded-[2rem] hover:border-blue-500 transition-all group"
+                                className="flex flex-col items-center justify-center p-6 md:p-8 bg-slate-950 border border-slate-800 rounded-[1.5rem] md:rounded-[2rem] hover:border-blue-500 transition-all group"
                             >
                                 <Plus className="text-slate-600 mb-2 group-hover:text-blue-500 group-hover:scale-125 transition-all" size={32} />
                                 <span className="font-black text-xs uppercase tracking-widest text-slate-500 group-hover:text-white">Start New Group</span>
                             </button>
                             <button
                                 onClick={() => setAction('join')}
-                                className="flex flex-col items-center justify-center p-8 bg-slate-950 border border-slate-800 rounded-[2rem] hover:border-purple-500 transition-all group"
+                                className="flex flex-col items-center justify-center p-6 md:p-8 bg-slate-950 border border-slate-800 rounded-[1.5rem] md:rounded-[2rem] hover:border-purple-500 transition-all group"
                             >
                                 <UserPlus className="text-slate-600 mb-2 group-hover:text-purple-500 group-hover:scale-125 transition-all" size={32} />
-                                <span className="font-black text-xs uppercase tracking-widest text-slate-500 group-hover:text-white">Join via Invite Code</span>
+                                <span className="font-black text-xs uppercase tracking-widest text-slate-500 group-hover:text-white">Join via Code</span>
                             </button>
                         </div>
                     )}
@@ -249,50 +249,50 @@ const GroupManager = ({ onGroupSync }: { onGroupSync: () => void }) => {
     }
 
     return (
-        <div className="bg-slate-900 border border-slate-800 p-6 rounded-3xl flex items-center justify-between shadow-xl">
+        <div className="bg-slate-900 border border-slate-800 p-4 md:p-6 rounded-[1.5rem] md:rounded-3xl flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-xl">
             <div className="flex items-center gap-4">
-                <div className="w-12 h-12 bg-blue-600/10 rounded-2xl flex items-center justify-center text-blue-500 border border-blue-500/20">
-                    <Sparkles size={24} />
+                <div className="w-10 h-10 md:w-12 md:h-12 bg-blue-600/10 rounded-xl md:rounded-2xl flex items-center justify-center text-blue-500 border border-blue-500/20 shrink-0">
+                    <Sparkles size={20} className="md:w-6 md:h-6" />
                 </div>
-                <div>
-                    <p className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em]">Active Circle</p>
-                    <h3 className="text-xl font-black text-white tracking-tight">{currentGroup.name}</h3>
+                <div className="min-w-0">
+                    <p className="text-[8px] md:text-[10px] font-black text-slate-500 uppercase tracking-[0.2em]">Active Circle</p>
+                    <h3 className="text-lg md:text-xl font-black text-white tracking-tight truncate">{currentGroup.name}</h3>
                 </div>
             </div>
 
-            <div className="flex items-center gap-6 flex-1 justify-end">
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4 md:gap-6 w-full md:w-auto">
                 {/* Search Bar */}
-                <form onSubmit={handleInviteUser} className="hidden lg:flex items-center gap-2 group/search">
-                    <div className="relative">
+                <form onSubmit={handleInviteUser} className="flex items-center gap-2 group/search w-full sm:w-auto">
+                    <div className="relative flex-1 sm:flex-none">
                         <UserPlus className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-700 group-hover/search:text-blue-500 transition-colors" size={16} />
                         <input
                             type="email"
                             placeholder="Invite via email..."
                             value={searchEmail}
                             onChange={(e) => setSearchEmail(e.target.value)}
-                            className="bg-slate-950 border border-slate-800 rounded-xl pl-11 pr-4 py-3 text-xs text-white focus:border-blue-500 outline-none w-64 transition-all"
+                            className="bg-slate-950 border border-slate-800 rounded-xl pl-11 pr-4 py-2.5 md:py-3 text-[10px] md:text-xs text-white focus:border-blue-500 outline-none w-full sm:w-48 lg:w-64 transition-all"
                         />
                     </div>
                     <button
                         type="submit"
                         disabled={inviting || !searchEmail}
-                        className="bg-blue-600 hover:bg-blue-500 text-white p-3 rounded-xl transition-all disabled:opacity-30 disabled:hover:bg-blue-600"
+                        className="bg-blue-600 hover:bg-blue-500 text-white p-2.5 md:p-3 rounded-xl transition-all disabled:opacity-30 disabled:hover:bg-blue-600 shrink-0"
                     >
                         {inviting ? <Loader2 className="animate-spin" size={14} /> : <Plus size={14} />}
                     </button>
                 </form>
 
-                <div className="flex items-center gap-2">
-                    <div className="hidden md:flex flex-col items-end mr-2">
-                        <p className="text-[9px] font-black text-slate-600 uppercase tracking-widest">Invite Code</p>
-                        <p className="text-xs font-mono font-bold text-blue-400 uppercase">{currentGroup.invite_code}</p>
+                <div className="flex items-center justify-between sm:justify-end gap-2 bg-slate-950/50 md:bg-transparent p-2 md:p-0 rounded-xl md:rounded-none">
+                    <div className="flex flex-col items-start sm:items-end mr-2">
+                        <p className="text-[8px] md:text-[9px] font-black text-slate-600 uppercase tracking-widest">Invite Code</p>
+                        <p className="text-[10px] md:text-xs font-mono font-bold text-blue-400 uppercase tracking-wider">{currentGroup.invite_code}</p>
                     </div>
                     <button
                         onClick={copyInviteCode}
-                        className={`flex items-center gap-2 px-5 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all ${copied ? 'bg-green-500 text-white shadow-lg shadow-green-500/20' : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
+                        className={`flex items-center gap-2 px-4 md:px-5 py-2.5 md:py-3 rounded-lg md:rounded-xl font-black text-[9px] md:text-[10px] uppercase tracking-widest transition-all ${copied ? 'bg-green-500 text-white shadow-lg shadow-green-500/20' : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
                             }`}
                     >
-                        {copied ? <><Check size={14} /> Copied</> : <><Copy size={14} /> Invite Code</>}
+                        {copied ? <><Check size={12} /> Copied</> : <><Copy size={12} /> Code</>}
                     </button>
                 </div>
             </div>

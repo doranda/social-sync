@@ -5,6 +5,7 @@ import InteractionDashboard from "@/components/InteractionDashboard";
 import MeetingLogger from "@/components/MeetingLogger";
 import GroupManager from "@/components/GroupManager";
 import NotificationCenter from "@/components/NotificationCenter";
+import MobileNav from "@/components/MobileNav";
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase/client';
 import { useRouter } from 'next/navigation';
@@ -52,12 +53,13 @@ export default function Home() {
   }
 
   return (
-    <main className="min-h-screen bg-slate-950 text-slate-50">
+    <main className="min-h-screen bg-slate-950 text-slate-50 pb-20 md:pb-0">
       <Sidebar />
+      <MobileNav />
 
-      <div className="pl-64">
+      <div className="pl-0 md:pl-64">
         {/* Top Header */}
-        <header className="h-20 border-b border-slate-800 flex items-center justify-between px-10 sticky top-0 bg-slate-950/80 backdrop-blur-md z-10">
+        <header className="h-20 border-b border-slate-800 flex items-center justify-between px-6 md:px-10 sticky top-0 bg-slate-950/80 backdrop-blur-md z-10">
           <div>
             <span className="text-slate-500 text-sm">Active Session</span>
             <h2 className="font-semibold text-white italic">{session.user.email}</h2>
@@ -71,7 +73,7 @@ export default function Home() {
         </header>
 
         {/* Content Area */}
-        <div className="p-10 max-w-6xl mx-auto space-y-12">
+        <div className="p-6 md:p-10 max-w-6xl mx-auto space-y-12">
           <GroupManager onGroupSync={() => {
             if (session) checkGroup(session.user.id);
           }} />

@@ -337,20 +337,20 @@ const InteractionDashboard = ({ groupId }: { groupId: string }) => {
     return (
         <div className="space-y-12 pb-20">
             {/* Header with Filter & Scrapbook */}
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 bg-slate-900/40 p-8 rounded-[3rem] border border-slate-800 backdrop-blur-sm">
+            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 bg-slate-900/40 p-6 md:p-8 rounded-[2rem] md:rounded-[3rem] border border-slate-800 backdrop-blur-sm">
                 <div>
-                    <h2 className="text-3xl font-black text-white mb-2 tracking-tight">Social Insights Dashboard</h2>
-                    <p className="text-slate-400">Connected to your real-time friendship network.</p>
+                    <h2 className="text-2xl md:text-3xl font-black text-white mb-2 tracking-tight">Social Insights Dashboard</h2>
+                    <p className="text-slate-400 text-sm md:text-base">Connected to your real-time friendship network.</p>
                 </div>
 
-                <div className="flex flex-col md:flex-row items-center gap-6">
-                    <div className="flex items-center gap-3 bg-slate-950 p-2 rounded-2xl border border-slate-800">
-                        <Filter size={18} className="ml-3 text-slate-500" />
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4 md:gap-6">
+                    <div className="flex items-center gap-2 md:gap-3 bg-slate-950 p-1.5 md:p-2 rounded-xl md:rounded-2xl border border-slate-800 overflow-x-auto no-scrollbar">
+                        <Filter size={16} className="ml-2 text-slate-500 shrink-0" />
                         {['2023', '2024', '2025', 'All'].map(year => (
                             <button
                                 key={year}
                                 onClick={() => setSelectedYear(year)}
-                                className={`px-5 py-2 rounded-xl text-sm font-bold transition-all ${selectedYear === year
+                                className={`px-4 md:px-5 py-1.5 md:py-2 rounded-lg md:rounded-xl text-xs md:sm font-bold transition-all whitespace-nowrap ${selectedYear === year
                                     ? 'bg-blue-600 text-white shadow-lg'
                                     : 'text-slate-500 hover:text-white hover:bg-slate-800'
                                     }`}
@@ -359,22 +359,24 @@ const InteractionDashboard = ({ groupId }: { groupId: string }) => {
                             </button>
                         ))}
                     </div>
-                    <ScrapbookExport data={{
-                        groupName: users[0]?.name ? `${users[0].name.split(' ')[0]}'s Circle` : 'My SocialSync Circle',
-                        events: filteredEvents,
-                        users: users
-                    }} />
+                    <div className="w-full sm:w-auto">
+                        <ScrapbookExport data={{
+                            groupName: users[0]?.name ? `${users[0].name.split(' ')[0]}'s Circle` : 'My SocialSync Circle',
+                            events: filteredEvents,
+                            users: users
+                        }} />
+                    </div>
                 </div>
             </div>
 
             {/* Empty State Check */}
             {events.length === 0 ? (
-                <div className="bg-slate-900 border border-slate-800 p-20 rounded-[3rem] text-center border-dashed">
-                    <div className="w-20 h-20 bg-slate-800 rounded-3xl flex items-center justify-center mx-auto mb-6 text-slate-500">
-                        <TrendingUp size={40} />
+                <div className="bg-slate-900 border border-slate-800 p-8 md:p-20 rounded-[2rem] md:rounded-[3rem] text-center border-dashed">
+                    <div className="w-16 h-16 md:w-20 md:h-20 bg-slate-800 rounded-2xl md:rounded-3xl flex items-center justify-center mx-auto mb-6 text-slate-500">
+                        <TrendingUp size={32} className="md:w-10 md:h-10" />
                     </div>
-                    <h3 className="text-2xl font-black text-white mb-2">The database is currently quiet.</h3>
-                    <p className="text-slate-500 max-w-md mx-auto mb-8">
+                    <h3 className="text-xl md:text-2xl font-black text-white mb-2">The database is currently quiet.</h3>
+                    <p className="text-slate-500 text-sm md:text-base max-w-md mx-auto mb-8">
                         Once you log your first reunion above, your interaction charts, heatmaps, and map pins will come to life here.
                     </p>
                 </div>
@@ -389,14 +391,16 @@ const InteractionDashboard = ({ groupId }: { groupId: string }) => {
                     </div>
 
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                        <div className="lg:col-span-2 bg-slate-900 border border-slate-800 rounded-[2.5rem] p-10">
-                            <div className="flex items-center justify-between mb-10">
+                        <div className="lg:col-span-2 bg-slate-900 border border-slate-800 rounded-[2rem] md:rounded-[2.5rem] p-6 md:p-10">
+                            <div className="flex items-center justify-between mb-8 md:mb-10">
                                 <div>
                                     <p className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] mb-2">Network Health</p>
-                                    <h3 className="text-2xl font-black text-white">Interaction Density</h3>
+                                    <h3 className="text-xl md:text-2xl font-black text-white">Interaction Density</h3>
                                 </div>
                             </div>
-                            <InteractionChart year={selectedYear} data={filteredEvents} />
+                            <div className="h-[250px] md:h-auto">
+                                <InteractionChart year={selectedYear} data={filteredEvents} />
+                            </div>
                         </div>
 
                         <div id="trophy-room" className="bg-slate-900 border border-slate-800 rounded-[2.5rem] p-10">
@@ -425,11 +429,11 @@ const InteractionDashboard = ({ groupId }: { groupId: string }) => {
                     </div>
 
                     {/* Geography Section */}
-                    <div className="bg-slate-900 border border-slate-800 p-10 rounded-[3rem]">
-                        <h3 className="text-xl font-bold text-white mb-8 flex items-center gap-2 uppercase tracking-widest">
+                    <div className="bg-slate-900 border border-slate-800 p-6 md:p-10 rounded-[2rem] md:rounded-[3rem]">
+                        <h3 className="text-lg md:text-xl font-bold text-white mb-8 flex items-center gap-2 uppercase tracking-widest">
                             <MapPin size={20} className="text-red-500" /> Geography of Friendships
                         </h3>
-                        <div className="h-[400px] border border-slate-800 rounded-[2rem] overflow-hidden">
+                        <div className="h-[300px] md:h-[400px] border border-slate-800 rounded-[1.5rem] md:rounded-[2rem] overflow-hidden">
                             <MeetingMap year={selectedYear} data={filteredEvents} />
                         </div>
                     </div>
@@ -528,19 +532,19 @@ const InteractionDashboard = ({ groupId }: { groupId: string }) => {
 
                     {/* Interaction Matrix */}
                     {users.length > 0 && (
-                        <div className="bg-slate-900 border border-slate-800 p-8 rounded-3xl overflow-hidden">
-                            <h3 className="text-xl font-bold text-white mb-8">Social Interaction Matrix</h3>
-                            <div className="overflow-x-auto">
-                                <table className="w-full text-left">
+                        <div className="bg-slate-900 border border-slate-800 p-6 md:p-8 rounded-[2rem] md:rounded-3xl overflow-hidden">
+                            <h3 className="text-lg md:text-xl font-bold text-white mb-8">Social Interaction Matrix</h3>
+                            <div className="overflow-x-auto -mx-6 md:mx-0 px-6 md:px-0 no-scrollbar">
+                                <table className="w-full text-left min-w-[600px]">
                                     <thead>
                                         <tr>
                                             <th className="p-4"></th>
                                             {users.map(user => (
                                                 <th key={user.id} className="p-4 text-center">
-                                                    <div className="w-10 h-10 rounded-full bg-slate-800 mx-auto mb-2 border-2 border-slate-700 flex items-center justify-center font-black text-slate-500 text-xs uppercase">
+                                                    <div className="w-8 h-8 md:w-10 md:h-10 rounded-full bg-slate-800 mx-auto mb-2 border-2 border-slate-700 flex items-center justify-center font-black text-slate-500 text-[10px] uppercase">
                                                         {user.name.charAt(0)}
                                                     </div>
-                                                    <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">{user.name.split(' ')[0]}</span>
+                                                    <span className="text-[8px] md:text-[10px] font-bold text-slate-500 uppercase tracking-widest">{user.name.split(' ')[0]}</span>
                                                 </th>
                                             ))}
                                         </tr>
@@ -548,13 +552,13 @@ const InteractionDashboard = ({ groupId }: { groupId: string }) => {
                                     <tbody>
                                         {users.map(rowUser => (
                                             <tr key={rowUser.id} className="border-t border-slate-800/50 hover:bg-slate-800/20 transition-colors">
-                                                <td className="p-4 font-bold text-white text-sm">{rowUser.name}</td>
+                                                <td className="p-4 font-bold text-white text-xs md:text-sm whitespace-nowrap">{rowUser.name}</td>
                                                 {users.map(colUser => {
                                                     const count = getInteractionCount(rowUser.id, colUser.id);
                                                     return (
                                                         <td key={colUser.id} className="p-4 text-center">
                                                             <div className={`
-                                                                w-12 h-12 mx-auto rounded-2xl flex items-center justify-center font-black text-lg transition-all
+                                                                w-10 h-10 md:w-12 md:h-12 mx-auto rounded-xl md:rounded-2xl flex items-center justify-center font-black text-base md:text-lg transition-all
                                                                 ${count === null ? 'bg-slate-950/30 text-slate-800' :
                                                                     count > 0 ? 'bg-blue-600 text-white shadow-lg' : 'bg-slate-950 text-slate-900'
                                                                 }
