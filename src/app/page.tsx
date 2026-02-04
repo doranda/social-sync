@@ -4,6 +4,7 @@ import Sidebar from "@/components/Sidebar";
 import InteractionDashboard from "@/components/InteractionDashboard";
 import MeetingLogger from "@/components/MeetingLogger";
 import GroupManager from "@/components/GroupManager";
+import NotificationCenter from "@/components/NotificationCenter";
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase/client';
 import { useRouter } from 'next/navigation';
@@ -61,8 +62,11 @@ export default function Home() {
             <span className="text-slate-500 text-sm">Active Session</span>
             <h2 className="font-semibold text-white italic">{session.user.email}</h2>
           </div>
-          <div className="flex items-center gap-4">
-            <span className="bg-blue-500/10 text-blue-500 text-[10px] px-3 py-1 rounded-full font-black border border-blue-500/20 uppercase tracking-widest">Real-time Cloud</span>
+          <div className="flex items-center gap-6">
+            <NotificationCenter />
+            <div className="flex items-center gap-4">
+              <span className="bg-blue-500/10 text-blue-500 text-[10px] px-3 py-1 rounded-full font-black border border-blue-500/20 uppercase tracking-widest">Real-time Cloud</span>
+            </div>
           </div>
         </header>
 

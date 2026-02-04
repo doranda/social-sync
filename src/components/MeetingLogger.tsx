@@ -15,6 +15,8 @@ const MeetingLogger = ({ groupId }: { groupId: string }) => {
     const [currentUser, setCurrentUser] = useState<any>(null);
     const [mediaFile, setMediaFile] = useState<File | null>(null);
     const [mediaPreview, setMediaPreview] = useState<string | null>(null);
+    const [isLocating, setIsLocating] = useState(false);
+    const [coords, setCoords] = useState<{ lat: number, lng: number } | null>(null);
 
     useEffect(() => {
         const checkUser = async () => {
@@ -45,6 +47,42 @@ const MeetingLogger = ({ groupId }: { groupId: string }) => {
             };
             reader.readAsDataURL(file);
         }
+    };
+
+    const handleAutoLocation = () => {
+        if (!navigator.geolocation) {
+            alert("Geolocation is not supported by your browser");
+            return;
+        }
+
+        setIsLocating(true);
+        navigator.geolocation.getCurrentPosition(async (position) => {
+            const { latitude, longitude } = position.coords;
+            setCoords({ lat: latitude, lng: longitude });
+
+            try {
+                // Using Nominatim for free reverse geocoding
+                const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`);
+                const data = await res.json();
+                if (data.display_name) {
+                    // Extract a shorter version of the address
+                    const parts = data.display_name.split(',');
+                    const shortAddress = parts.slice(0, 3).join(',');
+                    setLocation(shortAddress);
+                } else {
+                    setLocation(`${latitude.toFixed(4)}, ${longitude.toFixed(4)}`);
+                }
+            } catch (err) {
+                console.error("Geocoding error:", err);
+                setLocation(`${latitude.toFixed(4)}, ${longitude.toFixed(4)}`);
+            } finally {
+                setIsLocating(false);
+            }
+        }, (error) => {
+            console.error("Geolocation error:", error);
+            alert("Could not get your location. Please check browser permissions.");
+            setIsLocating(false);
+        });
     };
 
     const toggleMember = (id: string) => {
@@ -102,11 +140,12 @@ const MeetingLogger = ({ groupId }: { groupId: string }) => {
                 .from('meetings')
                 .insert([{
                     group_id: groupId,
+                    created_by: currentUser.id,
                     title,
                     date,
                     location,
-                    latitude: 40.7128, // Default to NYC for simplicity
-                    longitude: -74.0060,
+                    latitude: coords?.lat || 40.7128,
+                    longitude: coords?.lng || -74.0060,
                     media_url: mediaUrl
                 }])
                 .select()
@@ -172,14 +211,25 @@ const MeetingLogger = ({ groupId }: { groupId: string }) => {
                         />
                     </InputGroup>
                     <InputGroup label="Location" icon={<MapPin size={18} />}>
-                        <input
-                            type="text"
-                            placeholder="Manhattan, NY"
-                            value={location}
-                            onChange={(e) => setLocation(e.target.value)}
-                            className="w-full bg-slate-950 border border-slate-800 rounded-2xl px-5 py-4 text-white focus:border-blue-500 outline-none transition-all placeholder:text-slate-700"
-                            required
-                        />
+                        <div className="relative">
+                            <input
+                                type="text"
+                                placeholder="Manhattan, NY"
+                                value={location}
+                                onChange={(e) => setLocation(e.target.value)}
+                                className="w-full bg-slate-950 border border-slate-800 rounded-2xl px-5 py-4 pr-16 text-white focus:border-blue-500 outline-none transition-all placeholder:text-slate-700"
+                                required
+                            />
+                            <button
+                                type="button"
+                                onClick={handleAutoLocation}
+                                disabled={isLocating}
+                                className="absolute right-2 top-1/2 -translate-y-1/2 p-2 bg-slate-900 border border-slate-800 rounded-xl hover:bg-slate-800 text-blue-500 transition-all disabled:opacity-50"
+                                title="Use current location"
+                            >
+                                {isLocating ? <Loader2 className="animate-spin" size={16} /> : <MapPin size={16} />}
+                            </button>
+                        </div>
                     </InputGroup>
                 </div>
 
