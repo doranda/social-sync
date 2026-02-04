@@ -1,6 +1,7 @@
 "use client";
 
 import Sidebar from "@/components/Sidebar";
+import MobileNav from "@/components/MobileNav";
 import InteractionDashboard from "@/components/InteractionDashboard";
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase/client';
@@ -49,16 +50,17 @@ export default function AnalyticsPage() {
     }
 
     return (
-        <main className="min-h-screen bg-slate-950 text-slate-50">
+        <main className="min-h-screen bg-slate-950 text-slate-50 pb-20 md:pb-0">
             <Sidebar />
-            <div className="pl-64">
-                <header className="h-20 border-b border-slate-800 flex items-center px-10 sticky top-0 bg-slate-950/80 backdrop-blur-md z-10">
+            <MobileNav />
+            <div className="pl-0 md:pl-64">
+                <header className="h-20 border-b border-slate-800 flex items-center justify-between px-6 md:px-10 sticky top-0 bg-slate-950/80 backdrop-blur-md z-10">
                     <h2 className="font-semibold text-white">Full Group Analytics</h2>
                 </header>
 
-                <div className="p-10 max-w-6xl mx-auto">
+                <div className="p-6 md:p-10 max-w-6xl mx-auto">
                     <div className="mb-10">
-                        <h1 className="text-4xl font-black text-white mb-2">Social Insights</h1>
+                        <h1 className="text-3xl md:text-4xl font-black text-white mb-2">Social Insights</h1>
                         <p className="text-slate-500 font-medium">Deep dive into your friendship data and geography.</p>
                     </div>
 

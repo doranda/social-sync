@@ -16,6 +16,7 @@ export default function Home() {
   const [session, setSession] = useState<any>(null);
   const [groupId, setGroupId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [refreshKey, setRefreshKey] = useState(0);
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -30,16 +31,21 @@ export default function Home() {
     checkAuth();
   }, [router]);
 
-  const checkGroup = async (userId: string) => {
-    const { data } = await supabase
+  const checkGroup = async (userId: string, preferredGroupId?: string) => {
+    const { data: memberships } = await supabase
       .from('group_members')
       .select('group_id')
-      .eq('user_id', userId)
-      .limit(1)
-      .single();
+      .eq('user_id', userId);
 
-    if (data) {
-      setGroupId(data.group_id);
+    if (memberships && memberships.length > 0) {
+      if (preferredGroupId && memberships.some(m => m.group_id === preferredGroupId)) {
+        setGroupId(preferredGroupId);
+      } else if (!groupId || !memberships.some(m => m.group_id === groupId)) {
+        setGroupId(memberships[0].group_id);
+      }
+      setRefreshKey(k => k + 1);
+    } else {
+      setGroupId(null);
     }
     setLoading(false);
   };
@@ -72,17 +78,19 @@ export default function Home() {
           </div>
         </header>
 
-        {/* Content Area */}
         <div className="p-6 md:p-10 max-w-6xl mx-auto space-y-12">
-          <GroupManager onGroupSync={() => {
-            if (session) checkGroup(session.user.id);
-          }} />
+          <GroupManager
+            activeGroupId={groupId}
+            onGroupSync={(newId) => {
+              if (session) checkGroup(session.user.id, newId);
+            }}
+          />
 
           {groupId ? (
-            <>
-              <MeetingLogger groupId={groupId} />
+            <div key={refreshKey} className="space-y-12">
+              <MeetingLogger groupId={groupId} onSave={() => setRefreshKey(k => k + 1)} />
               <InteractionDashboard groupId={groupId} />
-            </>
+            </div>
           ) : (
             <div className="text-center p-20 border-2 border-dashed border-slate-900 rounded-[3rem]">
               <p className="text-slate-600 font-bold uppercase tracking-widest text-xs">Waiting for circle selection...</p>

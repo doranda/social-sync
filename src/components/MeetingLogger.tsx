@@ -5,7 +5,7 @@ import { supabase } from '@/lib/supabase/client';
 import { Calendar, MapPin, Users as UsersIcon, Camera, Plus, Check, Loader2 } from 'lucide-react';
 import { compressImage } from '@/lib/imageUtils';
 
-const MeetingLogger = ({ groupId }: { groupId: string }) => {
+const MeetingLogger = ({ groupId, onSave }: { groupId: string, onSave?: () => void }) => {
     const [title, setTitle] = useState('');
     const [date, setDate] = useState('');
     const [location, setLocation] = useState('');
@@ -167,7 +167,7 @@ const MeetingLogger = ({ groupId }: { groupId: string }) => {
 
             alert("Memory Saved Successfully to your Cloud Database!");
             setTitle(''); setDate(''); setLocation(''); setSelectedMembers([]); setMediaFile(null); setMediaPreview(null);
-            window.location.reload(); // Refresh to see new data in dashboard
+            if (onSave) onSave(); // Refresh data without reload
         } catch (error: any) {
             console.error("Save error:", error);
             alert(`Error: ${error.message}`);

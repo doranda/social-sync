@@ -4,27 +4,22 @@ import React, { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase/client';
 import { Phone, MapPin, User, Info, Loader2, Mail } from 'lucide-react';
 
-const MemberList = () => {
+const MemberList = ({ groupId }: { groupId?: string }) => {
     const [members, setMembers] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
         fetchMembers();
-    }, []);
+    }, [groupId]);
 
     const fetchMembers = async () => {
         setLoading(true);
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) return;
 
-        // 1. Get user's group
-        const { data: residency } = await supabase
-            .from('group_members')
-            .select('group_id')
-            .eq('user_id', user.id)
-            .single();
+        const activeId = groupId;
 
-        if (residency) {
+        if (activeId) {
             // 2. Get all members of that group with their profile info
             const { data } = await supabase
                 .from('group_members')
@@ -32,9 +27,25 @@ const MemberList = () => {
                     user_id,
                     profiles (*)
                 `)
-                .eq('group_id', residency.group_id);
+                .eq('group_id', activeId);
 
-            setMembers(data?.map(m => m.profiles) || []);
+            setMembers(data?.map(m => Array.isArray(m.profiles) ? m.profiles[0] : m.profiles).filter(Boolean) || []);
+        } else {
+            // Fallback for single group users (optional, but keep it robust)
+            const { data: residency } = await supabase
+                .from('group_members')
+                .select('group_id')
+                .eq('user_id', user.id)
+                .limit(1)
+                .maybeSingle();
+
+            if (residency) {
+                const { data } = await supabase
+                    .from('group_members')
+                    .select(`user_id, profiles (*)`)
+                    .eq('group_id', residency.group_id);
+                setMembers(data?.map(m => Array.isArray(m.profiles) ? m.profiles[0] : m.profiles).filter(Boolean) || []);
+            }
         }
         setLoading(false);
     };
