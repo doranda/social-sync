@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from 'react';
-import { Mail, Lock, User, ArrowRight, ShieldCheck } from 'lucide-react';
+import { Mail, Lock, User, ArrowRight, ShieldCheck, CheckSquare, Square } from 'lucide-react';
 import { supabase } from '@/lib/supabase/client';
 import { useRouter } from 'next/navigation';
 
@@ -12,6 +12,7 @@ const AuthUI = () => {
     const [password, setPassword] = useState('');
     const [name, setName] = useState('');
     const [loading, setLoading] = useState(false);
+    const [rememberMe, setRememberMe] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -33,6 +34,8 @@ const AuthUI = () => {
                 alert("Account created! Please check your email for a confirmation link.");
                 setMode('login');
             } else {
+                // @ts-ignore - setPersistence exists in v2 but types might be lagging or generic
+                await supabase.auth.setPersistence(rememberMe ? window.localStorage : window.sessionStorage);
                 const { error: signInError } = await supabase.auth.signInWithPassword({
                     email,
                     password,
@@ -134,6 +137,17 @@ const AuthUI = () => {
                                 />
                             </div>
                         </div>
+
+                        {mode === 'login' && (
+                            <div className="flex items-center gap-2 ml-1 cursor-pointer group" onClick={() => setRememberMe(!rememberMe)}>
+                                <div className={`transition-colors ${rememberMe ? 'text-blue-500' : 'text-slate-600 group-hover:text-slate-500'}`}>
+                                    {rememberMe ? <CheckSquare size={16} /> : <Square size={16} />}
+                                </div>
+                                <label className="text-xs font-bold text-slate-500 uppercase tracking-wider cursor-pointer select-none group-hover:text-slate-400 transition-colors">
+                                    Remember Me
+                                </label>
+                            </div>
+                        )}
 
                         <button
                             type="submit"
