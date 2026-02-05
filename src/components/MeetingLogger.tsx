@@ -368,14 +368,27 @@ const MeetingLogger = ({ onSave, initialData, onCancel }: MeetingLoggerProps) =>
             }
 
             // 2. Insert new media records
-            if (uploadedMediaUrls.length > 0) {
-                const mediaToInsert = uploadedMediaUrls.map(m => ({
+            const mediaToInsert = [
+                ...uploadedMediaUrls.map(m => ({
                     meeting_id: meetingId,
                     media_url: m.url,
                     media_type: m.type,
                     uploaded_by: currentUser.id
-                }));
+                }))
+            ];
 
+            // Migration for older records: if mediaPreviews has items NOT in DB (no ID), add them
+            const unsavedExistingMedia = mediaPreviews.filter(p => !p.isNew && !p.id);
+            unsavedExistingMedia.forEach(m => {
+                mediaToInsert.push({
+                    meeting_id: meetingId,
+                    media_url: m.url,
+                    media_type: m.type,
+                    uploaded_by: currentUser.id
+                });
+            });
+
+            if (mediaToInsert.length > 0) {
                 const { error: mediaInsertError } = await supabase
                     .from('meeting_media')
                     .insert(mediaToInsert);

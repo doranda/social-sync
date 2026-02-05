@@ -112,18 +112,23 @@ const InteractionDashboard = ({ groupId }: { groupId: string }) => {
                     setReactions(reactionMap);
 
                     // Fetch all media for these meetings
-                    const { data: mediaData } = await supabase
+                    const { data: mediaData, error: mediaError } = await supabase
                         .from('meeting_media')
                         .select('*')
                         .in('meeting_id', meetingIds);
 
-                    const mediaMap: Record<string, any[]> = {};
-                    mediaData?.forEach((m: any) => {
-                        if (!mediaMap[m.meeting_id]) mediaMap[m.meeting_id] = [];
-                        mediaMap[m.meeting_id].push(m);
-                    });
-                    setMeetingMedia(mediaMap);
-
+                    if (mediaError) {
+                        console.error("Error fetching multi-media:", mediaError);
+                    } else if (mediaData) {
+                        console.log(`Fetched ${mediaData.length} media items for ${meetingIds.length} meetings`);
+                        const mediaMap: Record<string, any[]> = {};
+                        mediaData.forEach(m => {
+                            if (!mediaMap[m.meeting_id]) mediaMap[m.meeting_id] = [];
+                            mediaMap[m.meeting_id].push(m);
+                        });
+                        console.log("Media Map keys:", Object.keys(mediaMap));
+                        setMeetingMedia(mediaMap);
+                    }
                     // Fetch Badges
                     const { data: badgeData } = await supabase.from('badges').select('*');
                     const { data: userBadgeData } = await supabase.from('user_badges').select('badge_id').eq('user_id', currentUser?.id);
