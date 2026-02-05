@@ -370,19 +370,6 @@ const GroupManager = ({ activeGroupId, onGroupSync }: { activeGroupId: string | 
                         </div>
 
                         <div className="flex items-center gap-2">
-                            {currentGroup?.created_by === currentGroup?.user_id && ( // Check if owner - actually we need user id from auth, but let's just show Delete if owner, Leave if not? 
-                                // wait, we don't have current user id easily accessible in render without state.
-                                // Let's just show "Leave" for everyone, and "Delete" if owner in the settings modal.
-                                // User asked for "Exit group".
-                                <button
-                                    onClick={handleLeaveGroup}
-                                    className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest text-red-500/50 hover:text-red-500 hover:bg-red-500/10 transition-all ml-auto"
-                                    title="Leave this circle"
-                                >
-                                    <LogOut size={12} /> Leave
-                                </button>
-                            )}
-                            {/* Re-checking logic: everyone can leave. owner leaving might need warning. handleLeaveGroup handles logic. */}
                             <button
                                 onClick={handleLeaveGroup}
                                 className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest text-slate-600 hover:text-red-500 hover:bg-red-500/10 transition-all"
@@ -394,25 +381,28 @@ const GroupManager = ({ activeGroupId, onGroupSync }: { activeGroupId: string | 
                 </div>
             </div>
 
-            {/* List of Circles */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                {/* Create Button as First Card */}
-                <button
-                    onClick={() => setAction('create')}
-                    className="p-6 rounded-[2rem] border border-dashed border-slate-800 hover:border-blue-500/50 hover:bg-slate-900/50 transition-all flex flex-col items-center justify-center text-center group h-full min-h-[140px]"
-                >
-                    <div className="bg-slate-800 p-3 rounded-full mb-3 group-hover:bg-blue-600 group-hover:text-white text-slate-500 transition-colors">
-                        <Plus size={20} />
-                    </div>
-                    <span className="font-bold text-slate-400 group-hover:text-white text-xs uppercase tracking-widest">Create New</span>
-                </button>
+            {/* Create New Circle Button - Prominent & Separate */}
+            <button
+                onClick={() => setAction('create')}
+                className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white p-5 rounded-[1.5rem] shadow-lg shadow-blue-600/20 flex items-center justify-center gap-3 transition-all group transform hover:scale-[1.01]"
+            >
+                <div className="bg-white/20 p-2 rounded-full">
+                    <Plus size={24} className="text-white" />
+                </div>
+                <div className="text-left">
+                    <span className="block text-lg font-black tracking-tight">Create a New Circle</span>
+                    <span className="block text-[10px] font-medium text-blue-100 uppercase tracking-widest">Start a fresh group for your squad</span>
+                </div>
+            </button>
 
+            {/* List of Existing Circles */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                 {myGroups.map((group) => (
                     <button
                         key={group.id}
                         onClick={() => onGroupSync(group.id)}
                         className={`p-6 rounded-[2rem] border transition-all text-left relative overflow-hidden group ${activeGroupId === group.id
-                            ? 'bg-blue-600 border-blue-400 shadow-lg shadow-blue-500/20 order-first'
+                            ? 'bg-blue-600 border-blue-400 shadow-lg shadow-blue-500/20'
                             : 'bg-slate-900 border-slate-800 hover:border-slate-700'
                             }`}
                     >
