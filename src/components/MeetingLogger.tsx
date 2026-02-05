@@ -23,6 +23,8 @@ const MeetingLogger = ({ onSave, initialData, onCancel }: MeetingLoggerProps) =>
     const [mediaPreview, setMediaPreview] = useState<string | null>(null);
     const [isLocating, setIsLocating] = useState(false);
     const [coords, setCoords] = useState<{ lat: number, lng: number } | null>(null);
+    const [locationSuggestions, setLocationSuggestions] = useState<any[]>([]);
+    const [showSuggestions, setShowSuggestions] = useState(false);
 
     // Group Management State
     const [groups, setGroups] = useState<any[]>([]);
@@ -135,38 +137,55 @@ const MeetingLogger = ({ onSave, initialData, onCancel }: MeetingLoggerProps) =>
         }
     };
 
-    const handleAutoLocation = () => {
-        if (!navigator.geolocation) {
-            alert("Geolocation is not supported by your browser");
-            return;
-        }
-
+    const handleAutoLocation = async () => {
         setIsLocating(true);
-        navigator.geolocation.getCurrentPosition(async (position) => {
+        try {
+            const position = await new Promise<GeolocationPosition>((resolve, reject) => {
+                navigator.geolocation.getCurrentPosition(resolve, reject);
+            });
+
             const { latitude, longitude } = position.coords;
             setCoords({ lat: latitude, lng: longitude });
 
-            try {
-                const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`);
-                const data = await res.json();
-                if (data.display_name) {
-                    const parts = data.display_name.split(',');
-                    const shortAddress = parts.slice(0, 3).join(',');
-                    setLocation(shortAddress);
-                } else {
-                    setLocation(`${latitude.toFixed(4)}, ${longitude.toFixed(4)}`);
-                }
-            } catch (err) {
-                console.error("Geocoding error:", err);
-                setLocation(`${latitude.toFixed(4)}, ${longitude.toFixed(4)}`);
-            } finally {
-                setIsLocating(false);
-            }
-        }, (error) => {
-            console.error("Geolocation error:", error);
-            alert("Could not get your location. Please check browser permissions.");
+            // Reverse geocode
+            const response = await fetch(
+                `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`
+            );
+            const data = await response.json();
+            const locationName = data.display_name?.split(',').slice(0, 3).join(',') || `${latitude.toFixed(4)}, ${longitude.toFixed(4)}`;
+            setLocation(locationName);
+        } catch (error) {
+            alert('Could not get your location. Please enter manually.');
+        } finally {
             setIsLocating(false);
-        });
+        }
+    };
+
+    const handleLocationSearch = async (query: string) => {
+        setLocation(query);
+        if (query.length < 3) {
+            setLocationSuggestions([]);
+            setShowSuggestions(false);
+            return;
+        }
+
+        try {
+            const response = await fetch(
+                `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=5`
+            );
+            const data = await response.json();
+            setLocationSuggestions(data);
+            setShowSuggestions(data.length > 0);
+        } catch (error) {
+            console.error('Location search error:', error);
+        }
+    };
+
+    const selectLocation = (suggestion: any) => {
+        setLocation(suggestion.display_name);
+        setCoords({ lat: parseFloat(suggestion.lat), lng: parseFloat(suggestion.lon) });
+        setShowSuggestions(false);
+        setLocationSuggestions([]);
     };
 
     const toggleMember = (id: string) => {
@@ -361,7 +380,8 @@ const MeetingLogger = ({ onSave, initialData, onCancel }: MeetingLoggerProps) =>
                             type="date"
                             value={date}
                             onChange={(e) => setDate(e.target.value)}
-                            className="w-full bg-slate-950 border border-slate-800 rounded-2xl px-5 py-4 text-white focus:border-blue-500 outline-none transition-all"
+                            className="w-full bg-slate-950 border border-slate-800 rounded-2xl px-5 py-4 text-white focus:border-blue-500 outline-none transition-all [color-scheme:dark]"
+                            style={{ colorScheme: 'dark' }}
                             required
                         />
                     </InputGroup>
@@ -369,9 +389,10 @@ const MeetingLogger = ({ onSave, initialData, onCancel }: MeetingLoggerProps) =>
                         <div className="relative">
                             <input
                                 type="text"
-                                placeholder="Manhattan, NY"
+                                placeholder="Start typing a location..."
                                 value={location}
-                                onChange={(e) => setLocation(e.target.value)}
+                                onChange={(e) => handleLocationSearch(e.target.value)}
+                                onFocus={() => locationSuggestions.length > 0 && setShowSuggestions(true)}
                                 className="w-full bg-slate-950 border border-slate-800 rounded-2xl px-5 py-4 pr-16 text-white focus:border-blue-500 outline-none transition-all placeholder:text-slate-700"
                                 required
                             />
@@ -384,6 +405,25 @@ const MeetingLogger = ({ onSave, initialData, onCancel }: MeetingLoggerProps) =>
                             >
                                 {isLocating ? <Loader2 className="animate-spin" size={16} /> : <MapPin size={16} />}
                             </button>
+
+                            {/* Location Suggestions Dropdown */}
+                            {showSuggestions && locationSuggestions.length > 0 && (
+                                <div className="absolute z-10 w-full mt-2 bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl overflow-hidden">
+                                    {locationSuggestions.map((suggestion, idx) => (
+                                        <button
+                                            key={idx}
+                                            type="button"
+                                            onClick={() => selectLocation(suggestion)}
+                                            className="w-full text-left px-4 py-3 hover:bg-slate-800 transition-colors border-b border-slate-800 last:border-b-0"
+                                        >
+                                            <div className="flex items-start gap-2">
+                                                <MapPin size={14} className="text-blue-500 mt-1 shrink-0" />
+                                                <span className="text-sm text-white">{suggestion.display_name}</span>
+                                            </div>
+                                        </button>
+                                    ))}
+                                </div>
+                            )}
                         </div>
                     </InputGroup>
                 </div>
