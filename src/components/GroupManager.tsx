@@ -269,30 +269,46 @@ const GroupManager = ({ activeGroupId, onGroupSync }: { activeGroupId: string | 
             )}
 
             {tab === 'all' && (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {myGroups.map((group) => (
-                        <button
-                            key={group.id}
-                            onClick={() => onGroupSync(group.id)}
-                            className={`p-6 rounded-[2rem] border transition-all text-left relative overflow-hidden group ${activeGroupId === group.id
-                                ? 'bg-blue-600 border-blue-400 shadow-lg shadow-blue-500/20'
-                                : 'bg-slate-900 border-slate-800 hover:border-slate-700'
-                                }`}
-                        >
-                            <Sparkles className={`mb-3 ${activeGroupId === group.id ? 'text-white' : 'text-blue-500 opacity-50'}`} size={24} />
-                            <h4 className={`text-lg font-black tracking-tight ${activeGroupId === group.id ? 'text-white' : 'text-slate-200'}`}>{group.name}</h4>
-                            <p className={`text-[10px] font-bold uppercase tracking-widest ${activeGroupId === group.id ? 'text-blue-200' : 'text-slate-500'}`}>
-                                {activeGroupId === group.id ? 'Current Circle' : 'Switch to Circle'}
-                            </p>
-                        </button>
-                    ))}
+                <div className="space-y-6">
+                    {/* Prominent Create Button */}
                     <button
                         onClick={() => setAction('create')}
-                        className="p-6 rounded-[2rem] border border-dashed border-slate-800 bg-slate-950 flex flex-col items-center justify-center gap-2 hover:border-blue-500 hover:bg-slate-900 transition-all group"
+                        className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white p-5 rounded-[1.5rem] shadow-lg shadow-blue-600/20 flex items-center justify-center gap-3 transition-all group transform hover:scale-[1.01]"
                     >
-                        <Plus className="text-slate-700 group-hover:text-blue-500 transition-colors" size={32} />
-                        <span className="text-[10px] font-black uppercase tracking-widest text-slate-700 group-hover:text-white">Start New Circle</span>
+                        <div className="bg-white/20 p-2 rounded-full">
+                            <Plus size={24} className="text-white" />
+                        </div>
+                        <div className="text-left">
+                            <span className="block text-lg font-black tracking-tight">Create a New Circle</span>
+                            <span className="block text-[10px] font-medium text-blue-100 uppercase tracking-widest">Start a fresh group for your squad</span>
+                        </div>
                     </button>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                        {myGroups.map((group) => (
+                            <button
+                                key={group.id}
+                                onClick={() => onGroupSync(group.id)}
+                                className={`p-6 rounded-[2rem] border transition-all text-left relative overflow-hidden group ${activeGroupId === group.id
+                                    ? 'bg-blue-600 border-blue-400 shadow-lg shadow-blue-500/20'
+                                    : 'bg-slate-900 border-slate-800 hover:border-slate-700'
+                                    }`}
+                            >
+                                <Sparkles className={`mb-3 ${activeGroupId === group.id ? 'text-white' : 'text-blue-500 opacity-50'}`} size={24} />
+                                <h4 className={`text-lg font-black tracking-tight ${activeGroupId === group.id ? 'text-white' : 'text-slate-200'}`}>{group.name}</h4>
+                                <p className={`text-[10px] font-bold uppercase tracking-widest ${activeGroupId === group.id ? 'text-blue-200' : 'text-slate-500'}`}>
+                                    {activeGroupId === group.id ? 'Current Circle' : 'Switch to Circle'}
+                                </p>
+                            </button>
+                        ))}
+                    </div>
+
+                    {/* dashed button removed from grid since we have the prominent one now, 
+                        or we can keep it as a secondary option at the end. 
+                        Let's keep it but maybe less prominent or just remove it to avoid duplications if the top one is huge.
+                        Actually, having both is fine, but let's keep the user request satisfied with the TOP one. 
+                        I will remove the grid one to allow the top one to be the primary call to action.
+                    */}
                 </div>
             )}
 
