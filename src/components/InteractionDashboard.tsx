@@ -5,7 +5,7 @@ import { supabase } from '@/lib/supabase/client';
 import InteractionChart from './InteractionChart';
 import MeetingMap from './MeetingMap';
 import ScrapbookExport from './ScrapbookExport';
-import { MapPin, TrendingUp, Users as UsersIcon, Star, Filter, Loader2, MessageCircle, Heart, Send, User as UserIcon, Calendar, Trophy, Zap, Award, Target, X } from 'lucide-react';
+import { MapPin, TrendingUp, Users as UsersIcon, Star, Filter, Loader2, MessageCircle, Heart, Send, User as UserIcon, Calendar, Trophy, Zap, Award, Target, X, Camera } from 'lucide-react';
 import { User, Event } from '@/types';
 
 interface Comment {
@@ -38,6 +38,7 @@ const InteractionDashboard = ({ groupId }: { groupId: string }) => {
     const [currentUser, setCurrentUser] = useState<any>(null);
     const [expandedImage, setExpandedImage] = useState<string | null>(null);
     const [selectedMemory, setSelectedMemory] = useState<any | null>(null);
+    const [meetingMedia, setMeetingMedia] = useState<Record<string, any[]>>({});
 
     useEffect(() => {
         const fetchData = async () => {
@@ -93,6 +94,19 @@ const InteractionDashboard = ({ groupId }: { groupId: string }) => {
                         reactionMap[r.meeting_id].push(r);
                     });
                     setReactions(reactionMap);
+
+                    // Fetch all media for these meetings
+                    const { data: mediaData } = await supabase
+                        .from('meeting_media')
+                        .select('*')
+                        .in('meeting_id', meetingIds);
+
+                    const mediaMap: Record<string, any[]> = {};
+                    mediaData?.forEach((m: any) => {
+                        if (!mediaMap[m.meeting_id]) mediaMap[m.meeting_id] = [];
+                        mediaMap[m.meeting_id].push(m);
+                    });
+                    setMeetingMedia(mediaMap);
 
                     // Fetch Badges
                     const { data: badgeData } = await supabase.from('badges').select('*');
@@ -474,6 +488,15 @@ const InteractionDashboard = ({ groupId }: { groupId: string }) => {
                                     <div key={event.id} className="bg-slate-950/50 border border-slate-800 rounded-[2.5rem] overflow-hidden group/card shadow-lg hover:shadow-2xl transition-all h-fit flex flex-col cursor-pointer" onClick={() => setSelectedMemory(event)}>
                                         <div className="aspect-video bg-slate-950 relative overflow-hidden">
                                             <img src={event.media_url} alt={event.title} className="w-full h-full object-cover group-hover/card:scale-110 transition-transform duration-700" />
+
+                                            {/* Media Count Badge */}
+                                            {meetingMedia[event.id]?.length > 1 && (
+                                                <div className="absolute top-4 right-4 bg-black/60 backdrop-blur-md px-2 py-1 rounded-lg border border-white/10 flex items-center gap-1.5 z-10 transition-transform group-hover/card:scale-110">
+                                                    <Camera size={12} className="text-blue-400" />
+                                                    <span className="text-[10px] font-black text-white">{meetingMedia[event.id].length}</span>
+                                                </div>
+                                            )}
+
                                             <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-transparent to-transparent opacity-80" />
                                             <div className="absolute bottom-4 left-6 right-6">
                                                 <h4 className="text-white font-black text-sm mb-1">{event.title}</h4>
@@ -634,20 +657,56 @@ const InteractionDashboard = ({ groupId }: { groupId: string }) => {
                         className="bg-slate-900 border border-slate-800 rounded-3xl max-w-4xl w-full my-8 overflow-hidden"
                         onClick={(e) => e.stopPropagation()}
                     >
-                        <div className="relative">
-                            {selectedMemory.media_url && (
-                                <div className="aspect-video bg-slate-950 relative overflow-hidden">
-                                    <img src={selectedMemory.media_url} alt={selectedMemory.title} className="w-full h-full object-cover" />
-                                    <div className="absolute inset-0 bg-gradient-to-t from-slate-900 via-transparent to-transparent" />
-                                    <button
-                                        onClick={() => setExpandedImage(selectedMemory.media_url)}
-                                        className="absolute bottom-4 right-4 bg-black/50 hover:bg-black/70 text-white px-4 py-2 rounded-xl transition-colors text-xs font-bold uppercase tracking-widest flex items-center gap-2"
-                                    >
-                                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v6m3-3H7" /></svg>
-                                        View Full Size
-                                    </button>
+                        <div className="relative group/modalHeader">
+                            {/* Multi-media Gallery */}
+                            <div className="flex overflow-x-auto snap-x snap-mandatory no-scrollbar bg-slate-950 aspect-video">
+                                {meetingMedia[selectedMemory.id]?.length > 0 ? (
+                                    meetingMedia[selectedMemory.id].map((media, idx) => (
+                                        <div key={idx} className="min-w-full h-full snap-center relative">
+                                            {media.media_type === 'video' ? (
+                                                <video src={media.media_url} controls className="w-full h-full object-contain" />
+                                            ) : (
+                                                <img
+                                                    src={media.media_url}
+                                                    alt={`Media ${idx}`}
+                                                    className="w-full h-full object-contain cursor-zoom-in"
+                                                    onClick={() => setExpandedImage(media.media_url)}
+                                                />
+                                            )}
+
+                                            {/* Media Indicator */}
+                                            <div className="absolute top-4 left-4 bg-black/50 backdrop-blur-md px-3 py-1.5 rounded-full border border-white/10 text-[10px] font-bold text-white uppercase tracking-widest">
+                                                {idx + 1} / {meetingMedia[selectedMemory.id].length}
+                                            </div>
+
+                                            {media.media_type !== 'video' && (
+                                                <button
+                                                    onClick={() => setExpandedImage(media.media_url)}
+                                                    className="absolute bottom-4 right-4 bg-black/50 hover:bg-blue-600 text-white px-4 py-2 rounded-xl transition-all text-xs font-bold uppercase tracking-widest flex items-center gap-2 opacity-0 group-hover/modalHeader:opacity-100"
+                                                >
+                                                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v6m3-3H7" /></svg>
+                                                    View Full Size
+                                                </button>
+                                            )}
+                                        </div>
+                                    ))
+                                ) : (
+                                    // Fallback for primary media
+                                    <div className="min-w-full h-full snap-center relative">
+                                        <img src={selectedMemory.media_url} className="w-full h-full object-contain" />
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Pagination Dots */}
+                            {meetingMedia[selectedMemory.id]?.length > 1 && (
+                                <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex gap-1.5 z-10">
+                                    {meetingMedia[selectedMemory.id].map((_, idx) => (
+                                        <div key={idx} className="w-1.5 h-1.5 rounded-full bg-white/30" />
+                                    ))}
                                 </div>
                             )}
+
                             <button
                                 onClick={() => setSelectedMemory(null)}
                                 className="absolute top-4 right-4 bg-black/50 hover:bg-black/70 text-white p-3 rounded-full transition-colors"

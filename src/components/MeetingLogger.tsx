@@ -19,8 +19,8 @@ const MeetingLogger = ({ onSave, initialData, onCancel }: MeetingLoggerProps) =>
     const [availableUsers, setAvailableUsers] = useState<any[]>([]);
     const [isSaving, setIsSaving] = useState(false);
     const [currentUser, setCurrentUser] = useState<any>(null);
-    const [mediaFile, setMediaFile] = useState<File | null>(null);
-    const [mediaPreview, setMediaPreview] = useState<string | null>(null);
+    const [mediaFiles, setMediaFiles] = useState<File[]>([]);
+    const [mediaPreviews, setMediaPreviews] = useState<{ url: string, type: string, id?: string, isNew?: boolean }[]>([]);
     const [isLocating, setIsLocating] = useState(false);
     const [coords, setCoords] = useState<{ lat: number, lng: number } | null>(null);
     const [locationSuggestions, setLocationSuggestions] = useState<any[]>([]);
@@ -77,8 +77,33 @@ const MeetingLogger = ({ onSave, initialData, onCancel }: MeetingLoggerProps) =>
             setDate(initialData.date || new Date().toISOString().split('T')[0]);
             setLocation(initialData.location || '');
             if (initialData.media_url) {
-                setMediaPreview(initialData.media_url);
+                // For backward compatibility, add the main media_url if not in media previews
             }
+
+            // Fetch all media for this meeting
+            const fetchMedia = async () => {
+                const { data: media } = await supabase
+                    .from('meeting_media')
+                    .select('*')
+                    .eq('meeting_id', initialData.id);
+
+                if (media && media.length > 0) {
+                    setMediaPreviews(media.map(m => ({
+                        url: m.media_url,
+                        type: m.media_type,
+                        id: m.id,
+                        isNew: false
+                    })));
+                } else if (initialData.media_url) {
+                    // Fallback for older records
+                    setMediaPreviews([{
+                        url: initialData.media_url,
+                        type: 'image',
+                        isNew: false
+                    }]);
+                }
+            };
+            fetchMedia();
 
             // Load members for this meeting logic
             // Since selecting members depends on selectedGroupId, wait for that
@@ -125,15 +150,45 @@ const MeetingLogger = ({ onSave, initialData, onCancel }: MeetingLoggerProps) =>
 
     }, [selectedGroupId, initialData]);
 
-    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const file = e.target.files?.[0];
-        if (file) {
-            setMediaFile(file);
-            const reader = new FileReader();
-            reader.onloadend = () => {
-                setMediaPreview(reader.result as string);
-            };
-            reader.readAsDataURL(file);
+    const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const files = Array.from(e.target.files || []);
+        if (files.length > 0) {
+            setMediaFiles(prev => [...prev, ...files]);
+
+            files.forEach(file => {
+                const reader = new FileReader();
+                reader.onloadend = () => {
+                    setMediaPreviews(prev => [...prev, {
+                        url: reader.result as string,
+                        type: file.type.startsWith('video') ? 'video' : 'image',
+                        isNew: true
+                    }]);
+                };
+                reader.readAsDataURL(file);
+            });
+        }
+    };
+
+    const removeMedia = (index: number) => {
+        const previewToRemove = mediaPreviews[index];
+        setMediaPreviews(prev => prev.filter((_, i) => i !== index));
+
+        // If it was a new file, remove it from mediaFiles as well
+        if (previewToRemove.isNew) {
+            // This is a bit tricky since mediaFiles index might not match mediaPreviews index
+            // because of existing files. Let's find by content or just track better.
+            // For now, let's just reset and rebuild if needed, or filter by file name if we track it.
+            // Simpler: filter mediaFiles by looking at which 'isNew' items remain
+            setMediaFiles(prev => {
+                const newFiles = [...prev];
+                // Count how many 'new' items were before this one
+                let newCount = 0;
+                for (let i = 0; i < index; i++) {
+                    if (mediaPreviews[i].isNew) newCount++;
+                }
+                newFiles.splice(newCount, 1);
+                return newFiles;
+            });
         }
     };
 
@@ -206,16 +261,17 @@ const MeetingLogger = ({ onSave, initialData, onCancel }: MeetingLoggerProps) =>
 
         setIsSaving(true);
         try {
-            let mediaUrl = initialData?.media_url || '';
+            const uploadedMediaUrls: { url: string, type: string }[] = [];
 
-            if (mediaFile) {
-                const isImage = mediaFile.type.startsWith('image/');
-                let uploadData: File | Blob = mediaFile;
-                let fileExt = mediaFile.name.split('.').pop();
+            // 1. Upload new files
+            for (const file of mediaFiles) {
+                const isImage = file.type.startsWith('image/');
+                let uploadData: File | Blob = file;
+                let fileExt = file.name.split('.').pop();
 
                 if (isImage) {
                     try {
-                        uploadData = await compressImage(mediaFile);
+                        uploadData = await compressImage(file);
                         fileExt = 'webp';
                     } catch (err) {
                         console.error('Compression failed, uploading original:', err);
@@ -235,11 +291,15 @@ const MeetingLogger = ({ onSave, initialData, onCancel }: MeetingLoggerProps) =>
                     .from('meeting_media')
                     .getPublicUrl(filePath);
 
-                mediaUrl = publicUrl;
-            } else if (mediaPreview === null) {
-                // User removed media
-                mediaUrl = '';
+                uploadedMediaUrls.push({
+                    url: publicUrl,
+                    type: isImage ? 'image' : 'video'
+                });
             }
+
+            // Primary media_url for the meetings table (first image or first video)
+            const firstMedia = mediaPreviews.find(p => !p.isNew) || uploadedMediaUrls[0];
+            const primaryMediaUrl = firstMedia?.url || '';
 
             const meetingData = {
                 group_id: selectedGroupId,
@@ -249,7 +309,7 @@ const MeetingLogger = ({ onSave, initialData, onCancel }: MeetingLoggerProps) =>
                 location,
                 latitude: coords?.lat || initialData?.latitude || 40.7128,
                 longitude: coords?.lng || initialData?.longitude || -74.0060,
-                media_url: mediaUrl
+                media_url: primaryMediaUrl
             };
 
             let meetingId = initialData?.id;
@@ -294,10 +354,39 @@ const MeetingLogger = ({ onSave, initialData, onCancel }: MeetingLoggerProps) =>
 
             if (participantError) throw participantError;
 
+            // Update meeting_media table
+            // 1. Delete media that was removed (only if editing)
+            if (initialData) {
+                const currentMediaIds = mediaPreviews.filter(p => !p.isNew).map(p => p.id).filter(Boolean);
+                const { error: deleteMediaError } = await supabase
+                    .from('meeting_media')
+                    .delete()
+                    .eq('meeting_id', meetingId)
+                    .not('id', 'in', `(${currentMediaIds.join(',') || 'NULL'})`);
+
+                if (deleteMediaError) console.error("Error deleting removed media:", deleteMediaError);
+            }
+
+            // 2. Insert new media records
+            if (uploadedMediaUrls.length > 0) {
+                const mediaToInsert = uploadedMediaUrls.map(m => ({
+                    meeting_id: meetingId,
+                    media_url: m.url,
+                    media_type: m.type,
+                    uploaded_by: currentUser.id
+                }));
+
+                const { error: mediaInsertError } = await supabase
+                    .from('meeting_media')
+                    .insert(mediaToInsert);
+
+                if (mediaInsertError) throw mediaInsertError;
+            }
+
             alert(initialData ? "Memory Updated!" : "Memory Saved Successfully!");
 
             if (!initialData) {
-                setTitle(''); setDate(new Date().toISOString().split('T')[0]); setLocation(''); setSelectedMembers([]); setMediaFile(null); setMediaPreview(null);
+                setTitle(''); setDate(new Date().toISOString().split('T')[0]); setLocation(''); setSelectedMembers([]); setMediaFiles([]); setMediaPreviews([]);
             }
 
             if (onSave) onSave();
@@ -455,35 +544,39 @@ const MeetingLogger = ({ onSave, initialData, onCancel }: MeetingLoggerProps) =>
                 </div>
 
                 <div>
-                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] mb-4 block ml-1">Attach Media (Photo/Video)</label>
-                    <div className="flex flex-col sm:flex-row items-stretch sm:items-start gap-4 md:gap-6">
-                        <label className="w-full sm:w-32 h-32 bg-slate-950 border-2 border-dashed border-slate-800 rounded-2xl md:rounded-3xl flex flex-col items-center justify-center cursor-pointer hover:border-blue-500 hover:bg-slate-900 transition-all group shrink-0">
+                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] mb-4 block ml-1">Attach Media (Photos/Videos)</label>
+                    <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-5 gap-4">
+                        <label className="aspect-square bg-slate-950 border-2 border-dashed border-slate-800 rounded-2xl flex flex-col items-center justify-center cursor-pointer hover:border-blue-500 hover:bg-slate-900 transition-all group shrink-0">
                             <Camera className="text-slate-700 group-hover:text-blue-500 mb-2" size={24} />
-                            <span className="text-[10px] font-bold text-slate-700 group-hover:text-white uppercase tracking-widest">Upload</span>
-                            <input type="file" className="hidden" accept="image/*,video/*" onChange={handleFileChange} />
+                            <span className="text-[10px] font-bold text-slate-700 group-hover:text-white uppercase tracking-widest text-center px-2">Add Media</span>
+                            <input type="file" className="hidden" accept="image/*,video/*" multiple onChange={handleFileChange} />
                         </label>
 
-                        {mediaPreview && (
-                            <div className="relative w-full h-32 bg-slate-950 rounded-2xl md:rounded-3xl overflow-hidden border border-slate-800 flex-1">
-                                {mediaFile?.type.startsWith('video') ? (
-                                    <video src={mediaPreview} className="w-full h-full object-cover opacity-50" />
+                        {mediaPreviews.map((preview, index) => (
+                            <div key={index} className="relative aspect-square bg-slate-950 rounded-2xl overflow-hidden border border-slate-800 group/item">
+                                {preview.type === 'video' ? (
+                                    <video src={preview.url} className="w-full h-full object-cover" />
                                 ) : (
-                                    <img src={mediaPreview} alt="Preview" className="w-full h-full object-cover opacity-50" />
+                                    <img src={preview.url} alt={`Preview ${index}`} className="w-full h-full object-cover" />
                                 )}
-                                <div className="absolute inset-0 flex items-center justify-center px-4">
-                                    <span className="text-[8px] md:text-[10px] font-black text-blue-500 bg-blue-500/10 px-4 py-2 rounded-full border border-blue-500/20 uppercase tracking-[0.2em] backdrop-blur-md text-center">
-                                        {mediaFile ? 'New File Ready' : 'Existing File'}
-                                    </span>
-                                </div>
+
+                                {preview.isNew && (
+                                    <div className="absolute top-2 left-2">
+                                        <span className="text-[8px] font-black text-blue-500 bg-blue-500/10 px-2 py-1 rounded-full border border-blue-500/20 uppercase tracking-widest backdrop-blur-md">
+                                            New
+                                        </span>
+                                    </div>
+                                )}
+
                                 <button
                                     type="button"
-                                    onClick={() => { setMediaFile(null); setMediaPreview(null); }}
-                                    className="absolute top-3 right-3 w-8 h-8 bg-slate-900/80 rounded-full flex items-center justify-center text-slate-400 hover:text-white hover:bg-red-500/20 transition-all z-10"
+                                    onClick={() => removeMedia(index)}
+                                    className="absolute top-2 right-2 w-6 h-6 bg-slate-900/80 rounded-full flex items-center justify-center text-slate-400 hover:text-white hover:bg-red-500 transition-all opacity-0 group-hover/item:opacity-100 z-10"
                                 >
-                                    <Plus className="rotate-45" size={16} />
+                                    <Plus className="rotate-45" size={14} />
                                 </button>
                             </div>
-                        )}
+                        ))}
                     </div>
                 </div>
 
