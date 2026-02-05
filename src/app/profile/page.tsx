@@ -26,6 +26,11 @@ export default function ProfilePage() {
         checkAuth();
     }, [router]);
 
+    const handleLogout = async () => {
+        await supabase.auth.signOut();
+        router.push('/auth');
+    };
+
     if (loading || !session) {
         return (
             <div className="min-h-screen bg-slate-950 flex items-center justify-center">
@@ -53,6 +58,17 @@ export default function ProfilePage() {
                     </div>
 
                     <ProfileEditor />
+
+                    {/* Mobile Only Logout - Since Sidebar handles it on desktop */}
+                    <div className="mt-12 md:hidden">
+                        <button
+                            onClick={handleLogout}
+                            className="w-full bg-slate-900 border border-slate-800 p-6 rounded-[2rem] flex items-center justify-center gap-3 text-red-500 font-black uppercase tracking-widest hover:bg-slate-800 transition-colors"
+                        >
+                            <Settings className="rotate-180" size={20} />
+                            Log Out
+                        </button>
+                    </div>
                 </div>
             </div>
         </main>

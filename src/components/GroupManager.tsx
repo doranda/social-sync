@@ -2,14 +2,14 @@
 
 import React, { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase/client';
-import { Users as UsersIcon, Plus, UserPlus, Copy, Check, Hash, Loader2, Sparkles, LayoutGrid, Settings2 } from 'lucide-react';
+import { Users as UsersIcon, Plus, UserPlus, Copy, Check, Loader2, Sparkles, Settings2, Trash2, LogOut } from 'lucide-react';
 
 const GroupManager = ({ activeGroupId, onGroupSync }: { activeGroupId: string | null, onGroupSync: (id?: string) => void }) => {
     const [currentGroup, setCurrentGroup] = useState<any>(null);
     const [myGroups, setMyGroups] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
-    const [tab, setTab] = useState<'current' | 'all' | 'manage'>('current');
     const [action, setAction] = useState<'none' | 'create' | 'join'>('none');
+    const [manageMode, setManageMode] = useState(false);
 
     const [groupName, setGroupName] = useState('');
     const [inviteCode, setInviteCode] = useState('');
@@ -27,17 +27,24 @@ const GroupManager = ({ activeGroupId, onGroupSync }: { activeGroupId: string | 
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) return;
 
-        // 1. Fetch ALL memberships
         const { data: memberships } = await supabase
             .from('group_members')
             .select('group_id, groups(*)')
             .eq('user_id', user.id);
 
         if (memberships) {
-            const groups = memberships.map(m => Array.isArray(m.groups) ? m.groups[0] : m.groups).filter(Boolean);
+            let groups = memberships.map(m => Array.isArray(m.groups) ? m.groups[0] : m.groups).filter(Boolean);
+
+            // Sort: Active group first
+            if (activeGroupId && groups.length > 0) {
+                groups = [
+                    ...groups.filter(g => g.id === activeGroupId),
+                    ...groups.filter(g => g.id !== activeGroupId)
+                ];
+            }
+
             setMyGroups(groups);
 
-            // 2. Set current group based on activeGroupId or default to first
             if (activeGroupId) {
                 const active = groups.find(g => g.id === activeGroupId);
                 setCurrentGroup(active || groups[0]);
@@ -73,7 +80,6 @@ const GroupManager = ({ activeGroupId, onGroupSync }: { activeGroupId: string | 
 
             setGroupName('');
             setAction('none');
-            setTab('current');
             onGroupSync(group.id);
             alert(`Group "${groupName}" created!`);
         } catch (err: any) {
@@ -105,7 +111,6 @@ const GroupManager = ({ activeGroupId, onGroupSync }: { activeGroupId: string | 
 
             setInviteCode('');
             setAction('none');
-            setTab('current');
             onGroupSync(group.id);
             alert(`Successfully joined "${group.name}"!`);
         } catch (err: any) {
@@ -157,6 +162,62 @@ const GroupManager = ({ activeGroupId, onGroupSync }: { activeGroupId: string | 
         }
     };
 
+    const handleLeaveGroup = async () => {
+        if (!currentGroup || !confirm("Are you sure you want to leave this circle?")) return;
+        setSubmitting(true);
+        try {
+            const { data: { user } } = await supabase.auth.getUser();
+            const { error } = await supabase
+                .from('group_members')
+                .delete()
+                .eq('group_id', currentGroup.id)
+                .eq('user_id', user?.id);
+
+            if (error) throw error;
+
+            alert("You have left the circle.");
+            const remainingGroups = myGroups.filter(g => g.id !== currentGroup.id);
+            setMyGroups(remainingGroups);
+            if (remainingGroups.length > 0) {
+                onGroupSync(remainingGroups[0].id);
+            } else {
+                setCurrentGroup(null);
+                onGroupSync(undefined);
+            }
+        } catch (err: any) {
+            alert(err.message);
+        } finally {
+            setSubmitting(false);
+        }
+    };
+
+    const handleDeleteGroup = async () => {
+        if (!currentGroup || !confirm("DANGER: This will delete the circle and ALL its data permanently. Continue?")) return;
+        setSubmitting(true);
+        try {
+            const { error } = await supabase
+                .from('groups')
+                .delete()
+                .eq('id', currentGroup.id);
+
+            if (error) throw error;
+
+            alert("Circle deleted successfully.");
+            const remainingGroups = myGroups.filter(g => g.id !== currentGroup.id);
+            setMyGroups(remainingGroups);
+            if (remainingGroups.length > 0) {
+                onGroupSync(remainingGroups[0].id);
+            } else {
+                setCurrentGroup(null);
+                onGroupSync(undefined);
+            }
+        } catch (err: any) {
+            alert(err.message);
+        } finally {
+            setSubmitting(false);
+        }
+    };
+
     if (loading) return (
         <div className="bg-slate-900 border border-slate-800 p-8 rounded-[2rem] flex items-center justify-center">
             <Loader2 className="animate-spin text-blue-500" />
@@ -180,10 +241,13 @@ const GroupManager = ({ activeGroupId, onGroupSync }: { activeGroupId: string | 
     if (action === 'create' || action === 'join') {
         return (
             <div className="bg-slate-900 border border-slate-800 p-8 rounded-[2rem] max-w-md mx-auto relative overflow-hidden">
-                <button onClick={() => setAction('none')} className="absolute top-6 right-6 text-slate-500 hover:text-white font-bold">Close</button>
-                <h3 className="text-2xl font-black text-white mb-6 uppercase tracking-tighter">
-                    {action === 'create' ? 'Start a New Circle' : 'Join a Circle'}
-                </h3>
+                <div className="flex justify-between items-center mb-6">
+                    <h3 className="text-2xl font-black text-white uppercase tracking-tighter">
+                        {action === 'create' ? 'Start a New Circle' : 'Join a Circle'}
+                    </h3>
+                    <button onClick={() => setAction('none')} className="text-slate-500 hover:text-white font-bold text-xs uppercase tracking-widest">Close</button>
+                </div>
+
                 {action === 'create' ? (
                     <form onSubmit={handleCreateGroup} className="space-y-4">
                         <input
@@ -217,128 +281,151 @@ const GroupManager = ({ activeGroupId, onGroupSync }: { activeGroupId: string | 
         );
     }
 
+    if (manageMode) {
+        return (
+            <div className="bg-slate-900 border border-slate-800 p-8 rounded-[2rem] flex flex-col items-center justify-center text-center relative">
+                <button onClick={() => setManageMode(false)} className="absolute top-6 right-6 text-slate-500 hover:text-white font-bold text-xs uppercase tracking-widest">Close</button>
+                <Settings2 className="text-slate-700 mb-4" size={48} />
+                <h3 className="text-xl font-black text-white mb-2">Manage: {currentGroup?.name}</h3>
+
+                <div className="flex flex-col gap-4 w-full max-w-xs mt-6">
+                    <button onClick={() => { setAction('create'); setManageMode(false); }} className="flex items-center justify-center gap-2 px-6 py-4 bg-slate-950 border border-slate-800 rounded-xl text-xs font-black uppercase text-slate-400 hover:text-white transition-all">
+                        <Plus size={14} /> Create New Circle
+                    </button>
+                    <button onClick={() => { setAction('join'); setManageMode(false); }} className="flex items-center justify-center gap-2 px-6 py-4 bg-slate-950 border border-slate-800 rounded-xl text-xs font-black uppercase text-slate-400 hover:text-white transition-all">
+                        <UserPlus size={14} /> Join Existing Circle
+                    </button>
+
+                    <div className="h-px bg-slate-800 my-2" />
+
+                    {currentGroup && (
+                        <>
+                            {currentGroup.created_by && (
+                                <button
+                                    onClick={handleDeleteGroup}
+                                    className="flex items-center justify-center gap-2 px-6 py-4 bg-red-500/10 border border-red-500/20 rounded-xl text-xs font-black uppercase text-red-500 hover:bg-red-500 hover:text-white transition-all"
+                                >
+                                    <Trash2 size={14} /> Delete This Circle
+                                </button>
+                            )}
+
+                            <button
+                                onClick={handleLeaveGroup}
+                                className="flex items-center justify-center gap-2 px-6 py-4 bg-slate-800 rounded-xl text-xs font-black uppercase text-slate-400 hover:text-white hover:bg-slate-700 transition-all"
+                            >
+                                <LogOut size={14} /> Leave Circle
+                            </button>
+                        </>
+                    )}
+                </div>
+            </div>
+        )
+    }
+
     return (
         <div className="space-y-6">
-            {/* Tabs Bar */}
-            <div className="flex items-center gap-1 bg-slate-900/50 p-1.5 rounded-2xl border border-slate-800/50 w-fit">
-                <TabButton active={tab === 'current'} onClick={() => setTab('current')} icon={<Sparkles size={14} />} label="Active" />
-                <TabButton active={tab === 'all'} onClick={() => setTab('all')} icon={<LayoutGrid size={14} />} label="Circles" />
-                <TabButton active={tab === 'manage'} onClick={() => setTab('manage')} icon={<Settings2 size={14} />} label="Manage" />
-            </div>
-
-            {tab === 'current' && currentGroup && (
-                <div className="bg-slate-900 border border-slate-800 p-4 md:p-6 rounded-[1.5rem] md:rounded-3xl flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-xl">
-                    <div className="flex items-center gap-4">
-                        <div className="w-10 h-10 md:w-12 md:h-12 bg-blue-600/10 rounded-xl md:rounded-2xl flex items-center justify-center text-blue-500 border border-blue-500/20 shrink-0">
-                            <Sparkles size={20} className="md:w-6 md:h-6" />
-                        </div>
-                        <div className="min-w-0">
-                            <p className="text-[8px] md:text-[10px] font-black text-slate-500 uppercase tracking-[0.2em]">Active Circle</p>
-                            <h3 className="text-lg md:text-xl font-black text-white tracking-tight truncate">{currentGroup.name}</h3>
-                        </div>
+            {/* Active Group Header Display */}
+            <div className="bg-slate-900 border border-slate-800 p-4 md:p-6 rounded-[1.5rem] md:rounded-3xl flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-xl">
+                <div className="flex items-center gap-4">
+                    <div className="w-10 h-10 md:w-12 md:h-12 bg-blue-600/10 rounded-xl md:rounded-2xl flex items-center justify-center text-blue-500 border border-blue-500/20 shrink-0">
+                        <Sparkles size={20} className="md:w-6 md:h-6" />
                     </div>
-
-                    <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4 md:gap-6 w-full md:w-auto">
-                        <form onSubmit={handleInviteUser} className="flex items-center gap-2 group/search w-full sm:w-auto">
-                            <div className="relative flex-1 sm:flex-none">
-                                <UserPlus className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-700 group-hover/search:text-blue-500 transition-colors" size={16} />
-                                <input
-                                    type="email"
-                                    placeholder="Invite via email..."
-                                    value={searchEmail}
-                                    onChange={(e) => setSearchEmail(e.target.value)}
-                                    className="bg-slate-950 border border-slate-800 rounded-xl pl-11 pr-4 py-2.5 md:py-3 text-[10px] md:text-xs text-white focus:border-blue-500 outline-none w-full sm:w-48 lg:w-64 transition-all"
-                                />
-                            </div>
-                            <button type="submit" disabled={inviting || !searchEmail} className="bg-blue-600 p-2.5 md:p-3 rounded-xl transition-all disabled:opacity-30">
-                                {inviting ? <Loader2 className="animate-spin" size={14} /> : <Plus size={14} />}
+                    <div className="min-w-0">
+                        <div className="flex items-center gap-2">
+                            <p className="text-[8px] md:text-[10px] font-black text-slate-500 uppercase tracking-[0.2em]">Active Circle</p>
+                            <button onClick={() => setManageMode(true)} className="text-slate-600 hover:text-blue-500 transition-colors">
+                                <Settings2 size={12} />
                             </button>
-                        </form>
+                        </div>
+                        <h3 className="text-lg md:text-xl font-black text-white tracking-tight truncate">{currentGroup?.name}</h3>
+                    </div>
+                </div>
 
-                        <div className="flex items-center justify-between sm:justify-end gap-2 bg-slate-950/50 md:bg-transparent p-2 md:p-0 rounded-xl md:rounded-none">
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4 md:gap-6 w-full md:w-auto">
+                    <form onSubmit={handleInviteUser} className="flex items-center gap-2 group/search w-full sm:w-auto">
+                        <div className="relative flex-1 sm:flex-none">
+                            <UserPlus className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-700 group-hover/search:text-blue-500 transition-colors" size={16} />
+                            <input
+                                type="email"
+                                placeholder="Invite via email..."
+                                value={searchEmail}
+                                onChange={(e) => setSearchEmail(e.target.value)}
+                                className="bg-slate-950 border border-slate-800 rounded-xl pl-11 pr-4 py-2.5 md:py-3 text-[10px] md:text-xs text-white focus:border-blue-500 outline-none w-full sm:w-48 lg:w-64 transition-all"
+                            />
+                        </div>
+                        <button type="submit" disabled={inviting || !searchEmail} className="bg-blue-600 p-2.5 md:p-3 rounded-xl transition-all disabled:opacity-30">
+                            {inviting ? <Loader2 className="animate-spin" size={14} /> : <Plus size={14} />}
+                        </button>
+                    </form>
+
+                    <div className="flex flex-col items-end gap-2">
+                        <div className="flex items-center gap-2 bg-slate-950/50 md:bg-transparent p-2 md:p-0 rounded-xl md:rounded-none">
                             <div className="flex flex-col items-start sm:items-end mr-2">
                                 <p className="text-[8px] md:text-[9px] font-black text-slate-600 uppercase tracking-widest">Invite Code</p>
-                                <p className="text-[10px] md:text-xs font-mono font-bold text-blue-400 uppercase tracking-wider">{currentGroup.invite_code}</p>
+                                <p className="text-[10px] md:text-xs font-mono font-bold text-blue-400 uppercase tracking-wider">{currentGroup?.invite_code}</p>
                             </div>
                             <button onClick={copyInviteCode} className={`flex items-center gap-2 px-4 md:px-5 py-2.5 md:py-3 rounded-lg md:rounded-xl font-black text-[9px] md:text-[10px] uppercase tracking-widest transition-all ${copied ? 'bg-green-500 text-white' : 'bg-slate-800 text-slate-300'}`}>
                                 {copied ? <><Check size={12} /> Copied</> : <><Copy size={12} /> Code</>}
                             </button>
                         </div>
-                    </div>
-                </div>
-            )}
 
-            {tab === 'all' && (
-                <div className="space-y-6">
-                    {/* Prominent Create Button */}
-                    <button
-                        onClick={() => setAction('create')}
-                        className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white p-5 rounded-[1.5rem] shadow-lg shadow-blue-600/20 flex items-center justify-center gap-3 transition-all group transform hover:scale-[1.01]"
-                    >
-                        <div className="bg-white/20 p-2 rounded-full">
-                            <Plus size={24} className="text-white" />
-                        </div>
-                        <div className="text-left">
-                            <span className="block text-lg font-black tracking-tight">Create a New Circle</span>
-                            <span className="block text-[10px] font-medium text-blue-100 uppercase tracking-widest">Start a fresh group for your squad</span>
-                        </div>
-                    </button>
-
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                        {myGroups.map((group) => (
+                        <div className="flex items-center gap-2">
+                            {currentGroup?.created_by === currentGroup?.user_id && ( // Check if owner - actually we need user id from auth, but let's just show Delete if owner, Leave if not? 
+                                // wait, we don't have current user id easily accessible in render without state.
+                                // Let's just show "Leave" for everyone, and "Delete" if owner in the settings modal.
+                                // User asked for "Exit group".
+                                <button
+                                    onClick={handleLeaveGroup}
+                                    className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest text-red-500/50 hover:text-red-500 hover:bg-red-500/10 transition-all ml-auto"
+                                    title="Leave this circle"
+                                >
+                                    <LogOut size={12} /> Leave
+                                </button>
+                            )}
+                            {/* Re-checking logic: everyone can leave. owner leaving might need warning. handleLeaveGroup handles logic. */}
                             <button
-                                key={group.id}
-                                onClick={() => onGroupSync(group.id)}
-                                className={`p-6 rounded-[2rem] border transition-all text-left relative overflow-hidden group ${activeGroupId === group.id
-                                    ? 'bg-blue-600 border-blue-400 shadow-lg shadow-blue-500/20'
-                                    : 'bg-slate-900 border-slate-800 hover:border-slate-700'
-                                    }`}
+                                onClick={handleLeaveGroup}
+                                className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest text-slate-600 hover:text-red-500 hover:bg-red-500/10 transition-all"
                             >
-                                <Sparkles className={`mb-3 ${activeGroupId === group.id ? 'text-white' : 'text-blue-500 opacity-50'}`} size={24} />
-                                <h4 className={`text-lg font-black tracking-tight ${activeGroupId === group.id ? 'text-white' : 'text-slate-200'}`}>{group.name}</h4>
-                                <p className={`text-[10px] font-bold uppercase tracking-widest ${activeGroupId === group.id ? 'text-blue-200' : 'text-slate-500'}`}>
-                                    {activeGroupId === group.id ? 'Current Circle' : 'Switch to Circle'}
-                                </p>
+                                <LogOut size={12} /> Leave
                             </button>
-                        ))}
-                    </div>
-
-                    {/* dashed button removed from grid since we have the prominent one now, 
-                        or we can keep it as a secondary option at the end. 
-                        Let's keep it but maybe less prominent or just remove it to avoid duplications if the top one is huge.
-                        Actually, having both is fine, but let's keep the user request satisfied with the TOP one. 
-                        I will remove the grid one to allow the top one to be the primary call to action.
-                    */}
-                </div>
-            )}
-
-            {tab === 'manage' && (
-                <div className="bg-slate-900 border border-slate-800 p-8 rounded-[2rem] flex flex-col items-center justify-center text-center">
-                    <Settings2 className="text-slate-700 mb-4" size={48} />
-                    <h3 className="text-xl font-black text-white mb-2">Circle Settings</h3>
-                    <p className="text-slate-500 mb-6 max-w-sm">Circle management, leaving groups, and permission settings coming soon.</p>
-                    <div className="flex gap-4">
-                        <button onClick={() => setAction('create')} className="flex items-center gap-2 px-6 py-3 bg-slate-950 border border-slate-800 rounded-xl text-xs font-black uppercase text-slate-400 hover:text-white transition-all">
-                            <Plus size={14} /> New Group
-                        </button>
-                        <button onClick={() => setAction('join')} className="flex items-center gap-2 px-6 py-3 bg-slate-950 border border-slate-800 rounded-xl text-xs font-black uppercase text-slate-400 hover:text-white transition-all">
-                            <UserPlus size={14} /> Join Group
-                        </button>
+                        </div>
                     </div>
                 </div>
-            )}
+            </div>
+
+            {/* List of Circles */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                {/* Create Button as First Card */}
+                <button
+                    onClick={() => setAction('create')}
+                    className="p-6 rounded-[2rem] border border-dashed border-slate-800 hover:border-blue-500/50 hover:bg-slate-900/50 transition-all flex flex-col items-center justify-center text-center group h-full min-h-[140px]"
+                >
+                    <div className="bg-slate-800 p-3 rounded-full mb-3 group-hover:bg-blue-600 group-hover:text-white text-slate-500 transition-colors">
+                        <Plus size={20} />
+                    </div>
+                    <span className="font-bold text-slate-400 group-hover:text-white text-xs uppercase tracking-widest">Create New</span>
+                </button>
+
+                {myGroups.map((group) => (
+                    <button
+                        key={group.id}
+                        onClick={() => onGroupSync(group.id)}
+                        className={`p-6 rounded-[2rem] border transition-all text-left relative overflow-hidden group ${activeGroupId === group.id
+                            ? 'bg-blue-600 border-blue-400 shadow-lg shadow-blue-500/20 order-first'
+                            : 'bg-slate-900 border-slate-800 hover:border-slate-700'
+                            }`}
+                    >
+                        <Sparkles className={`mb-3 ${activeGroupId === group.id ? 'text-white' : 'text-blue-500 opacity-50'}`} size={24} />
+                        <h4 className={`text-lg font-black tracking-tight ${activeGroupId === group.id ? 'text-white' : 'text-slate-200'}`}>{group.name}</h4>
+                        <p className={`text-[10px] font-bold uppercase tracking-widest ${activeGroupId === group.id ? 'text-blue-200' : 'text-slate-500'}`}>
+                            {activeGroupId === group.id ? 'Active Circle' : 'Switch'}
+                        </p>
+                    </button>
+                ))}
+            </div>
         </div>
     );
 };
-
-const TabButton = ({ active, onClick, icon, label }: { active: boolean, onClick: () => void, icon: React.ReactNode, label: string }) => (
-    <button
-        onClick={onClick}
-        className={`flex items-center gap-2 px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${active ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/10' : 'text-slate-500 hover:text-slate-300'
-            }`}
-    >
-        {icon} {label}
-    </button>
-);
 
 export default GroupManager;

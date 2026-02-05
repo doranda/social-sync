@@ -88,7 +88,7 @@ export default function Home() {
 
           {groupId ? (
             <div key={refreshKey} className="space-y-12">
-              <MeetingLogger groupId={groupId} onSave={() => setRefreshKey(k => k + 1)} />
+              <MeetingLogger onSave={() => setRefreshKey(k => k + 1)} />
               <InteractionDashboard groupId={groupId} />
             </div>
           ) : (
