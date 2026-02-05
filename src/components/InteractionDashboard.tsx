@@ -37,6 +37,7 @@ const InteractionDashboard = ({ groupId }: { groupId: string }) => {
     const [newComment, setNewComment] = useState<Record<string, string>>({});
     const [currentUser, setCurrentUser] = useState<any>(null);
     const [expandedImage, setExpandedImage] = useState<string | null>(null);
+    const [selectedMemory, setSelectedMemory] = useState<any | null>(null);
 
     useEffect(() => {
         const fetchData = async () => {
@@ -470,8 +471,8 @@ const InteractionDashboard = ({ groupId }: { groupId: string }) => {
                             </h3>
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                                 {filteredEvents.filter(e => e.media_url).map(event => (
-                                    <div key={event.id} className="bg-slate-950/50 border border-slate-800 rounded-[2.5rem] overflow-hidden group/card shadow-lg hover:shadow-2xl transition-all h-fit flex flex-col">
-                                        <div className="aspect-video bg-slate-950 relative overflow-hidden cursor-pointer" onClick={() => setExpandedImage(event.media_url)}>
+                                    <div key={event.id} className="bg-slate-950/50 border border-slate-800 rounded-[2.5rem] overflow-hidden group/card shadow-lg hover:shadow-2xl transition-all h-fit flex flex-col cursor-pointer" onClick={() => setSelectedMemory(event)}>
+                                        <div className="aspect-video bg-slate-950 relative overflow-hidden">
                                             <img src={event.media_url} alt={event.title} className="w-full h-full object-cover group-hover/card:scale-110 transition-transform duration-700" />
                                             <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-transparent to-transparent opacity-80" />
                                             <div className="absolute bottom-4 left-6 right-6">
@@ -620,6 +621,146 @@ const InteractionDashboard = ({ groupId }: { groupId: string }) => {
                         className="max-w-full max-h-[90vh] object-contain rounded-2xl shadow-2xl"
                         onClick={(e) => e.stopPropagation()}
                     />
+                </div>
+            )}
+
+            {/* Detailed Memory View Modal */}
+            {selectedMemory && (
+                <div
+                    className="fixed inset-0 z-50 bg-black/90 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto"
+                    onClick={() => setSelectedMemory(null)}
+                >
+                    <div
+                        className="bg-slate-900 border border-slate-800 rounded-3xl max-w-4xl w-full my-8 overflow-hidden"
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        {/* Header */}
+                        <div className="relative">
+                            {selectedMemory.media_url && (
+                                <div className="aspect-video bg-slate-950 relative overflow-hidden cursor-pointer" onClick={() => setExpandedImage(selectedMemory.media_url)}>
+                                    <img src={selectedMemory.media_url} alt={selectedMemory.title} className="w-full h-full object-cover" />
+                                    <div className="absolute inset-0 bg-gradient-to-t from-slate-900 via-transparent to-transparent" />
+                                </div>
+                            )}
+                            <button
+                                onClick={() => setSelectedMemory(null)}
+                                className="absolute top-4 right-4 bg-black/50 hover:bg-black/70 text-white p-3 rounded-full transition-colors"
+                            >
+                                <X size={20} />
+                            </button>
+                        </div>
+
+                        {/* Content */}
+                        <div className="p-8 space-y-6">
+                            {/* Title & Date */}
+                            <div>
+                                <h2 className="text-3xl font-black text-white mb-2">{selectedMemory.title}</h2>
+                                <div className="flex items-center gap-4 text-slate-400 text-sm">
+                                    <div className="flex items-center gap-2">
+                                        <Calendar size={16} />
+                                        {new Date(selectedMemory.date).toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                        <MapPin size={16} />
+                                        {selectedMemory.location}
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Participants */}
+                            <div>
+                                <h3 className="text-sm font-black text-slate-500 uppercase tracking-widest mb-3">Who Was There</h3>
+                                <div className="flex flex-wrap gap-2">
+                                    {participants
+                                        .filter(p => p.meeting_id === selectedMemory.id)
+                                        .map(p => {
+                                            const user = users.find(u => u.id === p.user_id);
+                                            return user ? (
+                                                <div key={p.user_id} className="flex items-center gap-2 bg-slate-950 border border-slate-800 rounded-full px-4 py-2">
+                                                    {user.avatar_url ? (
+                                                        <img src={user.avatar_url} className="w-6 h-6 rounded-full object-cover" />
+                                                    ) : (
+                                                        <div className="w-6 h-6 rounded-full bg-blue-600 flex items-center justify-center text-white text-xs font-bold">
+                                                            {user.name?.[0]?.toUpperCase() || 'U'}
+                                                        </div>
+                                                    )}
+                                                    <span className="text-sm font-bold text-white">{user.name}</span>
+                                                </div>
+                                            ) : null;
+                                        })
+                                    }
+                                </div>
+                            </div>
+
+                            {/* Reactions */}
+                            <div className="flex items-center gap-4 border-t border-b border-slate-800 py-4">
+                                <button
+                                    onClick={(e) => { e.stopPropagation(); handleToggleReaction(selectedMemory.id, '❤️'); }}
+                                    className={`flex items-center gap-2 px-4 py-2 rounded-xl transition-all ${reactions[selectedMemory.id]?.some(r => r.user_id === currentUser?.id && r.emoji === '❤️')
+                                            ? 'bg-red-500/20 text-red-400'
+                                            : 'bg-slate-950 text-slate-500 hover:bg-slate-800'
+                                        }`}
+                                >
+                                    <Heart size={16} fill={reactions[selectedMemory.id]?.some(r => r.user_id === currentUser?.id && r.emoji === '❤️') ? 'currentColor' : 'none'} />
+                                    <span className="text-xs font-bold">{reactions[selectedMemory.id]?.filter(r => r.emoji === '❤️').length || 0}</span>
+                                </button>
+                                <button
+                                    onClick={(e) => { e.stopPropagation(); handleToggleReaction(selectedMemory.id, '🔥'); }}
+                                    className={`flex items-center gap-2 px-4 py-2 rounded-xl transition-all ${reactions[selectedMemory.id]?.some(r => r.user_id === currentUser?.id && r.emoji === '🔥')
+                                            ? 'bg-orange-500/20 text-orange-400'
+                                            : 'bg-slate-950 text-slate-500 hover:bg-slate-800'
+                                        }`}
+                                >
+                                    <span className="text-lg">🔥</span>
+                                    <span className="text-xs font-bold">{reactions[selectedMemory.id]?.filter(r => r.emoji === '🔥').length || 0}</span>
+                                </button>
+                            </div>
+
+                            {/* Comments Section */}
+                            <div>
+                                <h3 className="text-sm font-black text-slate-500 uppercase tracking-widest mb-4">Comments</h3>
+                                <div className="space-y-3 mb-4 max-h-60 overflow-y-auto">
+                                    {comments[selectedMemory.id]?.map(comment => (
+                                        <div key={comment.id} className="flex gap-3">
+                                            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white text-xs font-bold shrink-0">
+                                                {comment.profiles?.avatar_url ? (
+                                                    <img src={comment.profiles.avatar_url} className="w-full h-full rounded-full object-cover" />
+                                                ) : (
+                                                    comment.profiles?.name?.[0]?.toUpperCase() || 'U'
+                                                )}
+                                            </div>
+                                            <div className="flex-1 bg-slate-950 border border-slate-800 rounded-2xl px-4 py-3">
+                                                <p className="font-black text-slate-300 text-xs mb-1">{comment.profiles?.name || 'User'}</p>
+                                                <p className="text-slate-400 text-sm leading-relaxed">{comment.content}</p>
+                                            </div>
+                                        </div>
+                                    ))}
+                                    {(!comments[selectedMemory.id] || comments[selectedMemory.id].length === 0) && (
+                                        <p className="text-sm text-slate-600 italic text-center py-4">No comments yet. Be the first to share your thoughts!</p>
+                                    )}
+                                </div>
+
+                                {/* Add Comment */}
+                                <div className="flex gap-2">
+                                    <input
+                                        type="text"
+                                        placeholder="Add a comment..."
+                                        value={newComment[selectedMemory.id] || ''}
+                                        onChange={(e) => setNewComment(prev => ({ ...prev, [selectedMemory.id]: e.target.value }))}
+                                        onKeyDown={(e) => e.key === 'Enter' && handlePostComment(selectedMemory.id)}
+                                        className="flex-1 bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-sm text-white focus:border-blue-500 outline-none placeholder:text-slate-600"
+                                    />
+                                    <button
+                                        onClick={() => handlePostComment(selectedMemory.id)}
+                                        disabled={!newComment[selectedMemory.id]?.trim()}
+                                        className="bg-blue-600 hover:bg-blue-500 text-white px-6 py-3 rounded-xl transition-all disabled:opacity-30 font-bold"
+                                    >
+                                        <Send size={16} />
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             )}
         </div>

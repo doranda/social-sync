@@ -33,11 +33,40 @@ const MeetingMap = ({ year, data }: MeetingMapProps) => {
 
     if (!isMounted || !L) return <div className="h-[400px] bg-slate-900 rounded-2xl flex items-center justify-center text-slate-500">Loading Map Engine...</div>;
 
-    const center: [number, number] = [40.730610, -73.935242]; // Default to NY area
+    // Calculate bounds from actual data
+    const validLocations = data.filter(e => e.latitude && e.longitude);
+
+    let center: [number, number] = [40.730610, -73.935242]; // Default to NY
+    let zoom = 10;
+
+    if (validLocations.length > 0) {
+        // Calculate center from all points
+        const avgLat = validLocations.reduce((sum, e) => sum + e.latitude, 0) / validLocations.length;
+        const avgLng = validLocations.reduce((sum, e) => sum + e.longitude, 0) / validLocations.length;
+        center = [avgLat, avgLng];
+
+        // Calculate zoom based on spread
+        if (validLocations.length > 1) {
+            const lats = validLocations.map(e => e.latitude);
+            const lngs = validLocations.map(e => e.longitude);
+            const latSpread = Math.max(...lats) - Math.min(...lats);
+            const lngSpread = Math.max(...lngs) - Math.min(...lngs);
+            const maxSpread = Math.max(latSpread, lngSpread);
+
+            // Adjust zoom based on spread (rough approximation)
+            if (maxSpread > 10) zoom = 4;
+            else if (maxSpread > 5) zoom = 6;
+            else if (maxSpread > 1) zoom = 8;
+            else if (maxSpread > 0.5) zoom = 10;
+            else zoom = 12;
+        } else {
+            zoom = 12; // Single point, zoom in close
+        }
+    }
 
     return (
         <div className="h-[400px] w-full rounded-2xl overflow-hidden border border-slate-800 shadow-2xl relative z-0">
-            <MapContainer center={center} zoom={10} style={{ height: '100%', width: '100%' }}>
+            <MapContainer center={center} zoom={zoom} style={{ height: '100%', width: '100%' }}>
                 <TileLayer
                     url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
                     attribution='&copy; CARTO'
