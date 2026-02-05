@@ -5,7 +5,7 @@ import { supabase } from '@/lib/supabase/client';
 import InteractionChart from './InteractionChart';
 import MeetingMap from './MeetingMap';
 import ScrapbookExport from './ScrapbookExport';
-import { MapPin, TrendingUp, Users as UsersIcon, Star, Filter, Loader2, MessageCircle, Heart, Send, User as UserIcon, Calendar, Trophy, Zap, Award, Target, X, Camera } from 'lucide-react';
+import { MapPin, TrendingUp, Users as UsersIcon, Star, Filter, Loader2, MessageCircle, Heart, Send, User as UserIcon, Calendar, Trophy, Zap, Award, Target, X, Camera, ChevronLeft, ChevronRight } from 'lucide-react';
 import { User, Event } from '@/types';
 
 interface Comment {
@@ -39,6 +39,22 @@ const InteractionDashboard = ({ groupId }: { groupId: string }) => {
     const [expandedImage, setExpandedImage] = useState<string | null>(null);
     const [selectedMemory, setSelectedMemory] = useState<any | null>(null);
     const [meetingMedia, setMeetingMedia] = useState<Record<string, any[]>>({});
+    const galleryRef = React.useRef<HTMLDivElement>(null);
+
+    const scrollGallery = (direction: 'left' | 'right') => {
+        if (galleryRef.current) {
+            const { scrollLeft, clientWidth } = galleryRef.current;
+            const scrollTo = direction === 'left' ? scrollLeft - clientWidth : scrollLeft + clientWidth;
+            galleryRef.current.scrollTo({ left: scrollTo, behavior: 'smooth' });
+        }
+    };
+
+    const jumpToMedia = (index: number) => {
+        if (galleryRef.current) {
+            const { clientWidth } = galleryRef.current;
+            galleryRef.current.scrollTo({ left: index * clientWidth, behavior: 'smooth' });
+        }
+    };
 
     useEffect(() => {
         const fetchData = async () => {
@@ -659,7 +675,10 @@ const InteractionDashboard = ({ groupId }: { groupId: string }) => {
                     >
                         <div className="relative group/modalHeader">
                             {/* Multi-media Gallery */}
-                            <div className="flex overflow-x-auto snap-x snap-mandatory no-scrollbar bg-slate-950 aspect-video">
+                            <div
+                                ref={galleryRef}
+                                className="flex overflow-x-auto snap-x snap-mandatory no-scrollbar bg-slate-950 aspect-video scroll-smooth"
+                            >
                                 {meetingMedia[selectedMemory.id]?.length > 0 ? (
                                     meetingMedia[selectedMemory.id].map((media, idx) => (
                                         <div key={idx} className="min-w-full h-full snap-center relative">
@@ -698,18 +717,40 @@ const InteractionDashboard = ({ groupId }: { groupId: string }) => {
                                 )}
                             </div>
 
+                            {/* Navigation Arrows */}
+                            {meetingMedia[selectedMemory.id]?.length > 1 && (
+                                <>
+                                    <button
+                                        onClick={() => scrollGallery('left')}
+                                        className="absolute left-4 top-1/2 -translate-y-1/2 w-10 h-10 bg-black/50 hover:bg-blue-600 text-white rounded-full flex items-center justify-center transition-all opacity-0 group-hover/modalHeader:opacity-100 z-20"
+                                    >
+                                        <ChevronLeft size={20} />
+                                    </button>
+                                    <button
+                                        onClick={() => scrollGallery('right')}
+                                        className="absolute right-4 top-1/2 -translate-y-1/2 w-10 h-10 bg-black/50 hover:bg-blue-600 text-white rounded-full flex items-center justify-center transition-all opacity-0 group-hover/modalHeader:opacity-100 z-20"
+                                    >
+                                        <ChevronRight size={20} />
+                                    </button>
+                                </>
+                            )}
+
                             {/* Pagination Dots */}
                             {meetingMedia[selectedMemory.id]?.length > 1 && (
                                 <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex gap-1.5 z-10">
                                     {meetingMedia[selectedMemory.id].map((_, idx) => (
-                                        <div key={idx} className="w-1.5 h-1.5 rounded-full bg-white/30" />
+                                        <button
+                                            key={idx}
+                                            onClick={() => jumpToMedia(idx)}
+                                            className="w-1.5 h-1.5 rounded-full bg-white/30 hover:bg-white transition-colors"
+                                        />
                                     ))}
                                 </div>
                             )}
 
                             <button
                                 onClick={() => setSelectedMemory(null)}
-                                className="absolute top-4 right-4 bg-black/50 hover:bg-black/70 text-white p-3 rounded-full transition-colors"
+                                className="absolute top-4 right-4 bg-black/50 hover:bg-black/70 text-white p-3 rounded-full transition-colors z-20"
                             >
                                 <X size={20} />
                             </button>
