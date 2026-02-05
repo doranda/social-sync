@@ -34,8 +34,9 @@ const AuthUI = () => {
                 alert("Account created! Please check your email for a confirmation link.");
                 setMode('login');
             } else {
-                // @ts-ignore - setPersistence exists in v2 but types might be lagging or generic
-                await supabase.auth.setPersistence(rememberMe ? window.localStorage : window.sessionStorage);
+                // NOTE: 'Remember Me' logic with setPersistence is causing runtime errors in this version.
+                // We default to standard persistence (LocalStorage) which effectively remembers the user.
+                // We will revisit explicit session vs local storage toggling in a future refactor.
                 const { error: signInError } = await supabase.auth.signInWithPassword({
                     email,
                     password,
