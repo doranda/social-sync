@@ -39,7 +39,7 @@ const MeetingMap = ({ year, data }: MeetingMapProps) => {
         <div className="h-[400px] w-full rounded-2xl overflow-hidden border border-slate-800 shadow-2xl relative z-0">
             <MapContainer center={center} zoom={10} style={{ height: '100%', width: '100%' }}>
                 <TileLayer
-                    url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
+                    url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
                     attribution='&copy; CARTO'
                 />
                 {data.map(event => event.latitude && event.longitude && (

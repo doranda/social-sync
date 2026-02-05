@@ -5,7 +5,7 @@ import { supabase } from '@/lib/supabase/client';
 import InteractionChart from './InteractionChart';
 import MeetingMap from './MeetingMap';
 import ScrapbookExport from './ScrapbookExport';
-import { MapPin, TrendingUp, Users as UsersIcon, Star, Filter, Loader2, MessageCircle, Heart, Send, User as UserIcon, Calendar, Trophy, Zap, Award, Target } from 'lucide-react';
+import { MapPin, TrendingUp, Users as UsersIcon, Star, Filter, Loader2, MessageCircle, Heart, Send, User as UserIcon, Calendar, Trophy, Zap, Award, Target, X } from 'lucide-react';
 import { User, Event } from '@/types';
 
 interface Comment {
@@ -36,6 +36,7 @@ const InteractionDashboard = ({ groupId }: { groupId: string }) => {
     const [userBadges, setUserBadges] = useState<any[]>([]);
     const [newComment, setNewComment] = useState<Record<string, string>>({});
     const [currentUser, setCurrentUser] = useState<any>(null);
+    const [expandedImage, setExpandedImage] = useState<string | null>(null);
 
     useEffect(() => {
         const fetchData = async () => {
@@ -470,7 +471,7 @@ const InteractionDashboard = ({ groupId }: { groupId: string }) => {
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                                 {filteredEvents.filter(e => e.media_url).map(event => (
                                     <div key={event.id} className="bg-slate-950/50 border border-slate-800 rounded-[2.5rem] overflow-hidden group/card shadow-lg hover:shadow-2xl transition-all h-fit flex flex-col">
-                                        <div className="aspect-video bg-slate-950 relative overflow-hidden">
+                                        <div className="aspect-video bg-slate-950 relative overflow-hidden cursor-pointer" onClick={() => setExpandedImage(event.media_url)}>
                                             <img src={event.media_url} alt={event.title} className="w-full h-full object-cover group-hover/card:scale-110 transition-transform duration-700" />
                                             <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-transparent to-transparent opacity-80" />
                                             <div className="absolute bottom-4 left-6 right-6">
@@ -599,6 +600,27 @@ const InteractionDashboard = ({ groupId }: { groupId: string }) => {
                         </div>
                     )}
                 </>
+            )}
+
+            {/* Image Expansion Modal */}
+            {expandedImage && (
+                <div
+                    className="fixed inset-0 z-50 bg-black/90 backdrop-blur-sm flex items-center justify-center p-4"
+                    onClick={() => setExpandedImage(null)}
+                >
+                    <button
+                        onClick={() => setExpandedImage(null)}
+                        className="absolute top-4 right-4 bg-white/10 hover:bg-white/20 text-white p-3 rounded-full transition-colors"
+                    >
+                        <X size={24} />
+                    </button>
+                    <img
+                        src={expandedImage}
+                        alt="Expanded view"
+                        className="max-w-full max-h-[90vh] object-contain rounded-2xl shadow-2xl"
+                        onClick={(e) => e.stopPropagation()}
+                    />
+                </div>
             )}
         </div>
     );
