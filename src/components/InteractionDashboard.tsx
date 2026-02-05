@@ -177,6 +177,20 @@ const InteractionDashboard = ({ groupId }: { groupId: string }) => {
         fetchUser();
     }, [groupId, currentUser?.id]);
 
+    // Dynamic Year Logic
+    const availableYears = useMemo(() => {
+        const years = new Set(events.map(e => e.date.split('-')[0]));
+        // Ensure standard years (2023-2025) are always present for consistency if data is sparse, 
+        // OR just rely strictly on data. Let's rely on data + current year to ensure at least one option.
+        const currentYear = new Date().getFullYear().toString();
+        years.add(currentYear);
+        if (events.length === 0) {
+            years.add('2024');
+            years.add('2023');
+        }
+        return Array.from(years).sort((a, b) => b.localeCompare(a));
+    }, [events]);
+
     const filteredEvents = useMemo(() => {
         if (selectedYear === 'All') return events;
         return events.filter(e => e.date.startsWith(selectedYear));
@@ -346,7 +360,7 @@ const InteractionDashboard = ({ groupId }: { groupId: string }) => {
                 <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4 md:gap-6">
                     <div className="flex items-center gap-2 md:gap-3 bg-slate-950 p-1.5 md:p-2 rounded-xl md:rounded-2xl border border-slate-800 overflow-x-auto no-scrollbar">
                         <Filter size={16} className="ml-2 text-slate-500 shrink-0" />
-                        {['2023', '2024', '2025', 'All'].map(year => (
+                        {availableYears.map(year => (
                             <button
                                 key={year}
                                 onClick={() => setSelectedYear(year)}
@@ -358,6 +372,15 @@ const InteractionDashboard = ({ groupId }: { groupId: string }) => {
                                 {year}
                             </button>
                         ))}
+                        <button
+                            onClick={() => setSelectedYear('All')}
+                            className={`px-4 md:px-5 py-1.5 md:py-2 rounded-lg md:rounded-xl text-xs md:sm font-bold transition-all whitespace-nowrap ${selectedYear === 'All'
+                                ? 'bg-blue-600 text-white shadow-lg'
+                                : 'text-slate-500 hover:text-white hover:bg-slate-800'
+                                }`}
+                        >
+                            All
+                        </button>
                     </div>
                     <div className="w-full sm:w-auto">
                         <ScrapbookExport data={{
