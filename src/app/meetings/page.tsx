@@ -6,7 +6,7 @@ import MeetingLogger from "@/components/MeetingLogger";
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase/client';
 import { useRouter } from 'next/navigation';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Calendar } from 'lucide-react';
 
 export default function MeetingsPage() {
     const router = useRouter();
